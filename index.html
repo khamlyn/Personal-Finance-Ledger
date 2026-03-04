@@ -1290,8 +1290,8 @@
           <button class="btn btn-ghost" style="font-size:11px;" onclick="toggleGuide()">📖 Export guides ▾</button>
         </div>
         <div id="export-guide" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; line-height:2.1; color:#a0aaa0;">
-          <strong style="color:var(--accent)">🍁 Wealthsimple Cash/Savings:</strong> my.wealthsimple.com → Select account → Activity → <strong style="color:var(--text)">Download CSV</strong><br>
-          <strong style="color:var(--accent)">📈 Wealthsimple TFSA/RRSP:</strong> Profile → Documents → <strong style="color:var(--text)">Request custom statement → Activities export → CSV</strong><br>
+          <strong style="color:var(--accent)">🍁 Wealthsimple (all accounts — recommended):</strong> Profile → Documents → <strong style="color:var(--text)">Activities export → Download CSV</strong><br>
+          <strong style="color:var(--accent)">🍁 Wealthsimple Cash (per account):</strong> Select account → Activity → <strong style="color:var(--text)">Download CSV</strong><br>
           <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account Summary → <strong style="color:var(--text)">Download Transactions → Intuit Quicken → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
@@ -2520,14 +2520,107 @@ function refreshGoals() {
 const BANK_PROFILES = [
 
   // ─── WEALTHSIMPLE ────────────────────────────────────────────────────────
+
   {
+    // Activities export: snake_case headers, transaction_date, activity_type, activity_sub_type, net_cash_amount
+    // This is what you get from Profile → Documents → Activities export CSV
+    name: 'Wealthsimple Activities Export',
+    icon: '🍁',
+    accountType: 'All Accounts (Chequing / TFSA / RRSP)',
+    exportPath: 'Profile → Documents → Activities export → Download CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      return h.includes('transaction_date') && h.includes('activity_type') && h.includes('net_cash_amount');
+    },
+    parse(rows, headers) {
+      const hi = h => headers.findIndex(x => x.toLowerCase().trim() === h);
+      const di   = hi('transaction_date');
+      const acti = hi('activity_type');
+      const subi = hi('activity_sub_type');
+      const nami = hi('name');
+      const symi = hi('symbol');
+      const ami  = hi('net_cash_amount');
+      const acci = hi('account_type');
+
+      // Map activity codes → human readable description
+      const subMap = {
+        'AFT_IN':      'Direct Deposit',
+        'EFT':         'Bank Transfer',
+        'EFT_TF':      'Bank Transfer (Internal)',
+        'TRANSFER':    'Transfer',
+        'TRANSFER_TF': 'Internal Transfer',
+        'E_TRFIN':     'E-Transfer In',
+        'E_TRFOUT':    'E-Transfer Out',
+        'OBP_OUT':     'Bill Payment',
+        'GIVEAWAY':    'Wealthsimple Bonus',
+        'BUY':         'Buy',
+        'SELL':        'Sell',
+        'CONSOLIDATION': 'Share Consolidation',
+      };
+
+      const actMap = {
+        'MoneyMovement': 'Transfer',
+        'Trade':         'Trade',
+        'Dividend':      'Dividend',
+        'Interest':      'Interest',
+        'Fee':           'Fee',
+        'BonusPayment':  'Bonus Payment',
+        'CorporateAction':'Corporate Action',
+      };
+
+      // Which activity types count as income vs expense
+      const incomeSubTypes = new Set(['AFT_IN','EFT','E_TRFIN','GIVEAWAY','TRANSFER','TRANSFER_TF']);
+      const incomeActTypes = new Set(['Dividend','Interest','BonusPayment']);
+
+      return rows.map(r => {
+        const actType = (r[acti] || '').trim();
+        const subType = (r[subi] || '').trim();
+        const secName = (r[nami] || '').trim();
+        const symbol  = (r[symi] || '').trim();
+        const rawAmt  = (r[ami]  || '').trim();
+        const date    = (r[di]   || '').trim();
+
+        // Build a readable description
+        const subLabel = subMap[subType] || subType.replace(/_/g,' ');
+        const actLabel = actMap[actType] || actType;
+        let desc = subLabel || actLabel;
+        if (symbol && secName) desc = `${subLabel||actLabel}: ${symbol} — ${secName}`;
+        else if (symbol)       desc = `${subLabel||actLabel}: ${symbol}`;
+        else if (secName)      desc = `${subLabel||actLabel}: ${secName}`;
+
+        // Income/expense hint
+        const amt = parseFloat(rawAmt) || 0;
+        let hint = null;
+        if (incomeActTypes.has(actType)) hint = 'income';
+        else if (actType === 'MoneyMovement') {
+          // Positive = money coming in (income), negative = going out (expense)
+          hint = amt >= 0 ? 'income' : 'expense';
+        } else if (actType === 'Trade') {
+          hint = amt >= 0 ? 'income' : 'expense'; // SELL = positive, BUY = negative
+        } else if (actType === 'Fee') {
+          hint = 'expense';
+        } else {
+          hint = amt >= 0 ? 'income' : 'expense';
+        }
+
+        // Skip pure internal transfers — they're just money moving between your own WS accounts
+        // and would pollute the transaction list as phantom income + expense pairs
+        const INTERNAL_SKIP = new Set(['TRANSFER_TF', 'EFT_TF']);
+        if (INTERNAL_SKIP.has(subType)) return null;
+
+        return { date, desc, rawAmt, hint };
+      }).filter(Boolean);  // remove nulls from skipped rows
+    }
+  },
+
+  {
+    // Standard cash account export: Date, Payee, Amount
     name: 'Wealthsimple Cash / Savings',
     icon: '🍁',
     accountType: 'Chequing / Savings',
     exportPath: 'my.wealthsimple.com → Select account → Activity → Download CSV',
     detect(headers) {
       const h = headers.map(x => x.toLowerCase().trim());
-      // WS cash: Date, Payee, Amount  (no Transaction Type column)
       return h.includes('payee') && h.includes('date') && h.includes('amount')
           && !h.some(x => /transaction.?type|^type$/i.test(x));
     },
@@ -2539,6 +2632,7 @@ const BANK_PROFILES = [
   },
 
   {
+    // Investing/TFSA/RRSP with Transaction Type column
     name: 'Wealthsimple Investing / TFSA / RRSP',
     icon: '📈',
     accountType: 'TFSA / RRSP / Investing',
@@ -2918,12 +3012,15 @@ function importCSV() {
     const date   = normalizeDate(item.date);
 
     // Determine income vs expense:
-    // 1. Use hint from profile (e.g. Wealthsimple investing transaction type)
-    // 2. Otherwise use sign of raw amount
+    // 1. Direct 'income'/'expense' hint from profile (e.g. WS activities export)
+    // 2. Keyword hint from profile (e.g. WS investing transaction type label)
+    // 3. Fall back to sign of raw amount
     let type;
-    if (item.hint) {
+    if (item.hint === 'income' || item.hint === 'expense') {
+      type = item.hint;
+    } else if (item.hint) {
       const h = item.hint.toLowerCase();
-      type = /deposit|dividend|interest|credit|buy|income|transfer.?in/.test(h) ? 'income' : 'expense';
+      type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
     } else {
       type = rawAmt >= 0 ? 'income' : 'expense';
     }
@@ -2965,6 +3062,18 @@ function normalizeDate(d) {
 
 function guessCategory(desc) {
   const d = desc.toLowerCase();
+  // Wealthsimple activity types
+  if (/direct deposit|aft.?in/.test(d))             return 'Salary';
+  if (/dividend/.test(d))                            return 'Investment';
+  if (/interest/.test(d))                            return 'Investment';
+  if (/bill payment|obp.?out/.test(d))              return 'Utilities';
+  if (/e.?transfer out|e_trfout/.test(d))           return 'Other';
+  if (/e.?transfer in|e_trfin/.test(d))             return 'Other';
+  if (/bonus|giveaway/.test(d))                     return 'Other';
+  if (/buy:|sell:/.test(d))                         return 'Investment';
+  if (/fee/.test(d))                                return 'Other';
+  if (/internal transfer|transfer_tf/.test(d))      return 'Other';
+  // General merchant matching
   if (/grocery|supermarket|whole foods|loblaws|sobeys/.test(d)) return 'Food & Dining';
   if (/restaurant|cafe|coffee|starbucks|mcdonald|pizza|tim horton/.test(d)) return 'Food & Dining';
   if (/rent|mortgage|hydro|electric|water|internet|rogers|bell/.test(d)) return 'Housing';
