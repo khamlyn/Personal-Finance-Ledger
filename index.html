@@ -692,6 +692,198 @@
 
   .change-badge.up { background: rgba(181,242,58,0.1); color: var(--accent); }
   .change-badge.down { background: rgba(242,90,58,0.1); color: var(--red); }
+
+  /* BANK BADGES */
+  .bank-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    letter-spacing: 0.5px;
+  }
+  .bank-badge.active {
+    background: rgba(181,242,58,0.1);
+    color: var(--accent);
+    border-color: rgba(181,242,58,0.3);
+  }
+
+  /* CALENDAR */
+  .cal-dow-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .cal-dow {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 6px 0;
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .cal-cell {
+    min-height: 80px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cal-cell:hover { border-color: rgba(181,242,58,0.3); background: rgba(181,242,58,0.04); }
+  .cal-cell.today { border-color: var(--accent) !important; }
+  .cal-cell.other-month { opacity: 0.35; }
+  .cal-cell.future-month { opacity: 0.6; }
+
+  .cal-day-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  .cal-cell.today .cal-day-num {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .cal-amounts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cal-income-bar {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    background: rgba(181,242,58,0.15);
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cal-expense-bar {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--red);
+    background: rgba(242,90,58,0.15);
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cal-bill-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin: 1px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+
+  .cal-bills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 3px;
+  }
+
+  .cal-bill-tag {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    border-radius: 3px;
+    padding: 1px 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* BILLS LIST */
+  .bill-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 20px;
+    border-bottom: 1px solid rgba(42,47,42,0.5);
+  }
+  .bill-row:last-child { border-bottom: none; }
+  .bill-dot-large {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .bill-name { font-size: 13px; }
+  .bill-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .bill-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+
+
+  /* HUB CARDS */
+  .hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  .hub-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    transition: border-color 0.2s;
+  }
+
+  .hub-card:hover { border-color: rgba(181,242,58,0.3); }
+
+  .hub-card-icon { font-size: 26px; margin-bottom: 4px; }
+
+  .hub-card-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .hub-equity-badge {
+    margin-top: 10px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    display: inline-block;
+  }
+
+  .hub-equity-badge.pos { background: rgba(181,242,58,0.1); color: var(--accent); }
+  .hub-equity-badge.neg { background: rgba(242,90,58,0.1); color: var(--red); }
+
 </style>
 </head>
 <body>
@@ -720,8 +912,8 @@
       <div class="nav-item" onclick="switchView('savings')">
         <span class="nav-icon">◎</span> Savings Goals
       </div>
-      <div class="nav-item" onclick="switchView('import')">
-        <span class="nav-icon">⇡</span> Import CSV
+      <div class="nav-item" onclick="switchView('hub')">
+        <span class="nav-icon">⊕</span> My Finances
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -776,6 +968,60 @@
           <div class="chart-card-title">Income vs Spending · Last 6 Months</div>
           <canvas id="chart-trend"></canvas>
         </div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <div class="section-title" style="margin-bottom:0;">Monthly Calendar</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(-1)">‹</button>
+          <span id="cal-month-label" style="font-family:var(--mono); font-size:13px; min-width:130px; text-align:center;"></span>
+          <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(1)">›</button>
+          <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="calGoToday()">Today</button>
+          <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="openModal('bill-modal')">+ Recurring Bill</button>
+        </div>
+      </div>
+
+      <div class="chart-card" style="padding:20px; margin-bottom:28px;">
+        <!-- Day-of-week headers -->
+        <div class="cal-dow-row">
+          <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
+        </div>
+        <div id="cal-grid" class="cal-grid"></div>
+
+        <!-- Legend -->
+        <div style="display:flex; gap:16px; margin-top:14px; flex-wrap:wrap; padding-top:14px; border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+            <span style="width:10px;height:10px;border-radius:2px;background:rgba(242,90,58,0.5);display:inline-block;"></span>Spending
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+            <span style="width:10px;height:10px;border-radius:2px;background:rgba(181,242,58,0.5);display:inline-block;"></span>Income
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+            <span style="width:10px;height:10px;border-radius:50%;background:rgba(242,168,58,0.7);display:inline-block;"></span>Recurring bill
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+            <span style="width:10px;height:10px;border-radius:50%;background:rgba(58,175,242,0.7);display:inline-block;"></span>Future bill
+          </div>
+        </div>
+      </div>
+
+      <!-- RECURRING BILLS LIST -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <div class="section-title" style="margin-bottom:0; flex:1;">Recurring Bills</div>
+      </div>
+      <div id="bills-list" class="chart-card" style="padding:0; overflow:hidden; margin-bottom:28px;">
+        <div class="empty-state" style="padding:30px;"><div class="empty-icon">🔄</div><div class="empty-text">No recurring bills yet. Add one above.</div></div>
+      </div>
+
+      <!-- DAY DETAIL POPOVER -->
+      <div id="day-popover" style="display:none; position:fixed; z-index:150; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; min-width:260px; max-width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span id="popover-date" style="font-family:var(--mono); font-size:12px; color:var(--accent);"></span>
+          <button onclick="$('day-popover').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div id="popover-body"></div>
       </div>
 
       <div class="section-title">Recent Transactions</div>
@@ -899,49 +1145,199 @@
       </div>
     </div>
 
-    <!-- ═══════════ IMPORT ═══════════ -->
-    <div id="view-import" class="view">
+    <!-- ═══════════ MY FINANCES HUB ═══════════ -->
+    <div id="view-hub" class="view">
       <div class="page-header">
-        <div class="page-title">Import CSV</div>
+        <div class="page-title">My Finances</div>
+        <div class="page-date">All data stays local · never uploaded</div>
       </div>
 
-      <div class="chart-card" style="margin-bottom:20px;">
-        <div class="chart-card-title">How to Export from Your Bank</div>
-        <div style="font-size:13px; line-height:1.8; color:#a0aaa0;">
-          Most banks offer CSV export under <strong style="color:var(--text)">Account Activity → Download → CSV</strong>.
-          Common bank paths:<br>
-          · <strong style="color:var(--text)">TD / RBC / Scotiabank</strong> — Accounts → Download transactions → CSV<br>
-          · <strong style="color:var(--text)">BMO</strong> — My Accounts → Export<br>
-          · <strong style="color:var(--text)">Chase / BoA / Wells Fargo</strong> — Activity → Download → CSV<br><br>
-          Your CSV should have columns for <strong style="color:var(--accent)">Date, Description, Amount</strong> (at minimum). Category is optional.
+      <!-- ── SECTION: IMPORT TRANSACTIONS ───────────────────────────── -->
+      <div class="section-title">Import Transactions</div>
+
+      <div class="chart-card" style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div class="chart-card-title" style="margin-bottom:8px;">Supported Banks — Auto-detected</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div class="bank-badge active">🍁 Wealthsimple</div>
+              <div class="bank-badge active">🟢 Simplii</div>
+              <div class="bank-badge active">🔴 Scotiabank</div>
+              <div class="bank-badge active">🟩 TD Bank</div>
+              <div class="bank-badge active">🔵 CIBC</div>
+              <div class="bank-badge active">☀️ Sun Life</div>
+              <div class="bank-badge">🏦 RBC</div>
+              <div class="bank-badge">🏦 BMO</div>
+              <div class="bank-badge">📄 Generic</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:11px;" onclick="toggleGuide()">📖 Export guides ▾</button>
+        </div>
+        <div id="export-guide" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; line-height:2.1; color:#a0aaa0;">
+          <strong style="color:var(--accent)">🍁 Wealthsimple Cash/Savings:</strong> my.wealthsimple.com → Select account → Activity → <strong style="color:var(--text)">Download CSV</strong><br>
+          <strong style="color:var(--accent)">📈 Wealthsimple TFSA/RRSP:</strong> Profile → Documents → <strong style="color:var(--text)">Request custom statement → Activities export → CSV</strong><br>
+          <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account Summary → <strong style="color:var(--text)">Download Transactions → Intuit Quicken → CSV</strong><br>
+          <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
+          <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
+          <strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
+          <strong style="color:var(--accent)">🟩 TD Credit Card:</strong> EasyWeb → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
+          <strong style="color:var(--accent)">🔵 CIBC Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download → CSV</strong><br>
+          <strong style="color:var(--accent)">☀️ Sun Life RRSP:</strong> mysunlife.ca → My money → View account activity → <strong style="color:var(--text)">Export to CSV</strong>
         </div>
       </div>
 
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" style="margin-bottom:12px;">
         <div class="drop-icon">⇡</div>
-        <div class="drop-label">Drop CSV here or <span>click to browse</span></div>
+        <div class="drop-label">Drop any bank CSV here or <span>click to browse</span></div>
         <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSVFile(this.files[0])">
       </div>
 
-      <div id="csv-preview" style="margin-top:20px; display:none;">
-        <div class="section-title">Preview</div>
+      <div id="detect-banner" style="display:none; margin-bottom:12px; padding:12px 18px; border-radius:10px; background:rgba(181,242,58,0.08); border:1px solid rgba(181,242,58,0.25); font-size:13px; align-items:center; gap:10px;">
+        <span style="font-size:18px;" id="detect-icon">◈</span>
+        <span id="detect-label" style="color:var(--accent); font-family:var(--mono); font-size:12px;"></span>
+        <span id="detect-desc" style="color:var(--muted);"></span>
+      </div>
+
+      <div id="csv-preview" style="margin-bottom:28px; display:none;">
         <div class="chart-card">
-          <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
-            <span style="font-family:var(--mono); font-size:12px; color:var(--muted)">Map columns:</span>
-            <select class="form-select" id="col-date" style="width:auto"></select>
-            <span style="font-family:var(--mono); font-size:12px; color:var(--muted)">= Date</span>
-            <select class="form-select" id="col-desc" style="width:auto"></select>
-            <span style="font-family:var(--mono); font-size:12px; color:var(--muted)">= Description</span>
-            <select class="form-select" id="col-amount" style="width:auto"></select>
-            <span style="font-family:var(--mono); font-size:12px; color:var(--muted)">= Amount</span>
+          <div class="chart-card-title" style="margin-bottom:12px;">Preview — first 5 rows</div>
+          <div id="col-mapper" style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span style="font-family:var(--mono); font-size:10px; color:var(--muted);">Override columns if needed:</span>
+            <select class="form-select" id="col-date" style="width:auto; font-size:11px;"></select>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Date</span>
+            <select class="form-select" id="col-desc" style="width:auto; font-size:11px;"></select>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Description</span>
+            <select class="form-select" id="col-amount" style="width:auto; font-size:11px;"></select>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Amount</span>
           </div>
           <table class="tx-table" id="csv-preview-table"></table>
-          <div style="margin-top:16px; display:flex; gap:10px;">
+          <div style="margin-top:14px; display:flex; gap:10px;">
             <button class="btn btn-primary" onclick="importCSV()">Import All</button>
-            <button class="btn btn-ghost" onclick="document.getElementById('csv-preview').style.display='none'">Cancel</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('csv-preview').style.display='none'; document.getElementById('detect-banner').style.display='none';">Cancel</button>
           </div>
         </div>
       </div>
+
+      <!-- ── SECTION: PROPERTY ────────────────────────────────────────── -->
+      <div class="section-title">Property</div>
+      <div class="hub-grid" style="margin-bottom:28px;">
+
+        <div class="hub-card">
+          <div class="hub-card-icon">🏠</div>
+          <div class="hub-card-label">Home</div>
+          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Estimated Value ($)</label>
+              <input type="number" class="form-input" id="hub-home-value" placeholder="0" min="0"
+                oninput="saveHubField('homeValue', this.value); refreshNetWorthFromHub()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outstanding Mortgage ($)</label>
+              <input type="number" class="form-input" id="hub-mortgage" placeholder="0" min="0"
+                oninput="saveHubField('mortgage', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div id="home-equity-badge" class="hub-equity-badge" style="display:none;"></div>
+        </div>
+
+      </div>
+
+      <!-- ── SECTION: VEHICLES ────────────────────────────────────────── -->
+      <div class="section-title">Vehicles</div>
+      <div class="hub-grid" style="margin-bottom:28px;">
+
+        <div class="hub-card">
+          <div class="hub-card-icon">🚗</div>
+          <div class="hub-card-label">Vehicle 1</div>
+          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Estimated Value ($)</label>
+              <input type="number" class="form-input" id="hub-car1-value" placeholder="0" min="0"
+                oninput="saveHubField('car1Value', this.value); refreshNetWorthFromHub()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outstanding Loan ($)</label>
+              <input type="number" class="form-input" id="hub-car1-loan" placeholder="0" min="0"
+                oninput="saveHubField('car1Loan', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div id="car1-equity-badge" class="hub-equity-badge" style="display:none;"></div>
+        </div>
+
+        <div class="hub-card">
+          <div class="hub-card-icon">🚙</div>
+          <div class="hub-card-label">Vehicle 2 <span style="font-size:10px; color:var(--muted)">(optional)</span></div>
+          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Estimated Value ($)</label>
+              <input type="number" class="form-input" id="hub-car2-value" placeholder="0" min="0"
+                oninput="saveHubField('car2Value', this.value); refreshNetWorthFromHub()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outstanding Loan ($)</label>
+              <input type="number" class="form-input" id="hub-car2-loan" placeholder="0" min="0"
+                oninput="saveHubField('car2Loan', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div id="car2-equity-badge" class="hub-equity-badge" style="display:none;"></div>
+        </div>
+
+      </div>
+
+      <!-- ── SECTION: DEBTS ──────────────────────────────────────────── -->
+      <div class="section-title">Debts & Loans</div>
+      <div class="hub-grid" style="margin-bottom:28px;">
+
+        <div class="hub-card">
+          <div class="hub-card-icon">🎓</div>
+          <div class="hub-card-label">Government Student Loan (NSLSC)</div>
+          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Current Balance ($)</label>
+              <input type="number" class="form-input" id="hub-student-loan" placeholder="0" min="0"
+                oninput="saveHubField('studentLoan', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">Update manually when you make payments or receive your NSLSC statement.</div>
+        </div>
+
+        <div class="hub-card">
+          <div class="hub-card-icon">💳</div>
+          <div class="hub-card-label">Scotiabank Line of Credit</div>
+          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Current Balance Owed ($)</label>
+              <input type="number" class="form-input" id="hub-loc" placeholder="0" min="0"
+                oninput="saveHubField('loc', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">LOC balance — update when it changes.</div>
+        </div>
+
+      </div>
+
+      <!-- ── NET WORTH IMPACT SUMMARY ─────────────────────────────────── -->
+      <div class="section-title">Net Worth Impact</div>
+      <div class="chart-card" style="padding:24px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; text-align:center;">
+          <div>
+            <div class="stat-label">From Hub (Assets)</div>
+            <div class="stat-value positive" id="hub-total-assets" style="font-size:22px;">$0</div>
+          </div>
+          <div>
+            <div class="stat-label">From Hub (Debts)</div>
+            <div class="stat-value negative" id="hub-total-debts" style="font-size:22px;">$0</div>
+          </div>
+          <div>
+            <div class="stat-label">Hub Net Equity</div>
+            <div class="stat-value" id="hub-net-equity" style="font-size:22px;">$0</div>
+          </div>
+        </div>
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-family:var(--mono); font-size:10px; color:var(--muted); text-align:center;">
+          These values flow automatically into the Net Worth page. Changes save instantly.
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -1078,6 +1474,7 @@
         <select class="form-select" id="liability-type">
           <option>Mortgage</option>
           <option>Auto Loan</option>
+          <option>Government Student Loan (NSLSC)</option>
           <option>Student Loan</option>
           <option>Credit Card</option>
           <option>Line of Credit</option>
@@ -1135,6 +1532,71 @@
   </div>
 </div>
 
+<!-- Recurring Bill Modal -->
+<div class="modal-overlay" id="bill-modal">
+  <div class="modal">
+    <div class="modal-title">Add Recurring Bill</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Bill Name</label>
+        <input type="text" class="form-input" id="bill-name" placeholder="e.g. Netflix, Hydro, Car Insurance">
+      </div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="form-group">
+        <label class="form-label">Amount ($)</label>
+        <input type="number" class="form-input" id="bill-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Day of Month</label>
+        <input type="number" class="form-input" id="bill-day" placeholder="1–28" min="1" max="28">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select class="form-select" id="bill-type">
+          <option value="expense">Bill / Expense</option>
+          <option value="income">Income / Deposit</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select" id="bill-category">
+          <option>Housing</option>
+          <option>Utilities</option>
+          <option>Entertainment</option>
+          <option>Transport</option>
+          <option>Healthcare</option>
+          <option>Food & Dining</option>
+          <option>Salary</option>
+          <option>Freelance</option>
+          <option>Investment</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Colour</label>
+        <select class="form-select" id="bill-color">
+          <option value="#f2a83a">🟠 Orange</option>
+          <option value="#f25a3a">🔴 Red</option>
+          <option value="#b5f23a">🟢 Green</option>
+          <option value="#3af2a8">🩵 Teal</option>
+          <option value="#3ab5f2">🔵 Blue</option>
+          <option value="#a83af2">🟣 Purple</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:-4px; margin-bottom:12px;">
+      Day capped at 28 to work across all months. Future occurrences show on the calendar.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bill-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addBill()">Add Bill</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">✓ <span id="toast-msg"></span></div>
 
@@ -1147,7 +1609,9 @@ let state = {
   budgets: [],
   assets: [],
   liabilities: [],
-  goals: []
+  goals: [],
+  hub: {},
+  bills: []
 };
 
 let txFilter = 'all';
@@ -1189,6 +1653,7 @@ function switchView(view) {
   if (view === 'networth') refreshNetWorth();
   if (view === 'savings') refreshGoals();
   if (view === 'transactions') refreshTransactions();
+  if (view === 'hub') loadHubInputs();
 }
 
 // ═══════════════════════════════════
@@ -1246,6 +1711,260 @@ function refreshTransactions() {
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>
   `).join('');
+}
+
+// ═══════════════════════════════════
+// CALENDAR & RECURRING BILLS
+// ═══════════════════════════════════
+
+let calYear, calMonth;
+
+function calInit() {
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+}
+
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function calGoToday() {
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  if (calYear === undefined) calInit();
+
+  const label = new Date(calYear, calMonth, 1)
+    .toLocaleString('default', { month: 'long', year: 'numeric' });
+  const lbl = $('cal-month-label');
+  if (lbl) lbl.textContent = label;
+
+  const grid = $('cal-grid');
+  if (!grid) return;
+
+  const now       = new Date();
+  const todayStr  = now.toISOString().slice(0, 10);
+  const firstDay  = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMo  = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev= new Date(calYear, calMonth, 0).getDate();
+
+  // Build day-keyed maps from actual transactions this month
+  const txByDay = {};
+  state.transactions.forEach(t => {
+    const d = new Date(t.date + 'T12:00:00');
+    if (d.getMonth() === calMonth && d.getFullYear() === calYear) {
+      const day = d.getDate();
+      if (!txByDay[day]) txByDay[day] = { income: 0, expense: 0, items: [] };
+      txByDay[day][t.type] += t.amount;
+      txByDay[day].items.push(t);
+    }
+  });
+
+  // Bills for this month & upcoming occurrences
+  const bills = state.bills || [];
+
+  let cells = '';
+  const totalCells = Math.ceil((firstDay + daysInMo) / 7) * 7;
+
+  for (let i = 0; i < totalCells; i++) {
+    let dayNum, mo, yr, cls = 'cal-cell', isThisMonth = false;
+
+    if (i < firstDay) {
+      // Previous month
+      dayNum = daysInPrev - firstDay + i + 1;
+      mo = calMonth - 1; yr = calYear;
+      if (mo < 0) { mo = 11; yr--; }
+      cls += ' other-month';
+    } else if (i < firstDay + daysInMo) {
+      dayNum = i - firstDay + 1;
+      mo = calMonth; yr = calYear;
+      isThisMonth = true;
+    } else {
+      dayNum = i - firstDay - daysInMo + 1;
+      mo = calMonth + 1; yr = calYear;
+      if (mo > 11) { mo = 0; yr++; }
+      cls += ' future-month';
+    }
+
+    const dateStr = `${yr}-${String(mo+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr;
+    if (isToday) cls += ' today';
+
+    const isPast   = new Date(dateStr + 'T23:59:59') < now;
+    const isFuture = !isPast && dateStr !== todayStr;
+
+    // Transaction bars (only this month)
+    let txHTML = '';
+    if (isThisMonth && txByDay[dayNum]) {
+      const d = txByDay[dayNum];
+      if (d.income  > 0) txHTML += `<div class="cal-income-bar">+${fmtShort(d.income)}</div>`;
+      if (d.expense > 0) txHTML += `<div class="cal-expense-bar">-${fmtShort(d.expense)}</div>`;
+    }
+
+    // Bill dots
+    let billsHTML = '';
+    const dayBills = bills.filter(b => b.day === dayNum);
+    if (dayBills.length > 0) {
+      billsHTML = '<div class="cal-bills-row">';
+      dayBills.forEach(b => {
+        const dotColor = isFuture ? '#3ab5f2' : (b.color || '#f2a83a');
+        const opacity  = isFuture ? '0.8' : '1';
+        billsHTML += `<div class="cal-bill-tag" style="background:${dotColor}22; opacity:${opacity}; color:${dotColor}; max-width:100%;">
+          <span class="cal-bill-dot" style="background:${dotColor};"></span>${b.name.length > 8 ? b.name.slice(0,8)+'…' : b.name}
+        </div>`;
+      });
+      billsHTML += '</div>';
+    }
+
+    cells += `<div class="${cls}" onclick="showDayPopover('${dateStr}', ${dayNum}, event)">
+      <div class="cal-day-num">${dayNum}</div>
+      <div class="cal-amounts">${txHTML}</div>
+      ${billsHTML}
+    </div>`;
+  }
+
+  grid.innerHTML = cells;
+  renderBillsList();
+}
+
+function fmtShort(n) {
+  if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'k';
+  return '$' + Math.round(n);
+}
+
+function showDayPopover(dateStr, dayNum, evt) {
+  const pop  = $('day-popover');
+  const body = $('popover-body');
+  if (!pop || !body) return;
+
+  $('popover-date').textContent = new Date(dateStr + 'T12:00:00')
+    .toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Transactions on this date
+  const txs = state.transactions.filter(t => t.date === dateStr);
+  // Bills on this day-of-month
+  const bills = (state.bills || []).filter(b => b.day === dayNum);
+
+  let html = '';
+
+  if (txs.length > 0) {
+    html += `<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Transactions</div>`;
+    txs.forEach(t => {
+      const c = t.type === 'income' ? 'var(--accent)' : 'var(--red)';
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:12px;">${t.desc}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${t.category}</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:12px;color:${c};">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+      </div>`;
+    });
+  }
+
+  if (bills.length > 0) {
+    html += `<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:12px;margin-bottom:8px;">Recurring Bills</div>`;
+    bills.forEach(b => {
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="cal-bill-dot" style="background:${b.color||'#f2a83a'};width:9px;height:9px;"></span>
+          <div>
+            <div style="font-size:12px;">${b.name}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${b.category} · every month</div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:12px;color:${b.type==='income'?'var(--accent)':'var(--red)'};">${b.type==='income'?'+':'-'}${fmt(b.amount)}</div>
+      </div>`;
+    });
+  }
+
+  if (!html) {
+    html = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">No activity on this day.</div>`;
+  }
+
+  body.innerHTML = html;
+
+  // Position popover near click
+  const x = Math.min(evt.clientX + 12, window.innerWidth - 360);
+  const y = Math.min(evt.clientY + 8,  window.innerHeight - 400);
+  pop.style.left = x + 'px';
+  pop.style.top  = y + 'px';
+  pop.style.display = 'block';
+}
+
+// Close popover on outside click
+document.addEventListener('click', e => {
+  const pop = $('day-popover');
+  if (pop && pop.style.display === 'block' && !pop.contains(e.target) && !e.target.closest('.cal-cell')) {
+    pop.style.display = 'none';
+  }
+});
+
+// ── RECURRING BILLS CRUD ─────────────────────────────────────────────────
+function addBill() {
+  const name     = $('bill-name').value.trim();
+  const amount   = parseFloat($('bill-amount').value);
+  const day      = parseInt($('bill-day').value);
+  const type     = $('bill-type').value;
+  const category = $('bill-category').value;
+  const color    = $('bill-color').value;
+
+  if (!name || isNaN(amount) || amount <= 0 || isNaN(day) || day < 1 || day > 28) {
+    showToast('Please fill in all fields. Day must be 1–28.');
+    return;
+  }
+
+  if (!state.bills) state.bills = [];
+  state.bills.push({ id: Date.now(), name, amount, day, type, category, color });
+  saveState();
+  closeModal('bill-modal');
+  $('bill-name').value = ''; $('bill-amount').value = ''; $('bill-day').value = '';
+  showToast('Recurring bill added!');
+  renderCalendar();
+}
+
+function deleteBill(id) {
+  state.bills = (state.bills || []).filter(b => b.id !== id);
+  saveState();
+  renderCalendar();
+  showToast('Bill removed.');
+}
+
+function renderBillsList() {
+  const el = $('bills-list');
+  if (!el) return;
+  const bills = state.bills || [];
+  if (bills.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="padding:30px;"><div class="empty-icon">🔄</div><div class="empty-text">No recurring bills yet. Add one above.</div></div>`;
+    return;
+  }
+  // Sort by day of month
+  const sorted = [...bills].sort((a, b) => a.day - b.day);
+  el.innerHTML = sorted.map(b => {
+    const sign = b.type === 'income' ? '+' : '-';
+    const col  = b.type === 'income' ? 'var(--accent)' : 'var(--red)';
+    const nthStr = b.day === 1 ? '1st' : b.day === 2 ? '2nd' : b.day === 3 ? '3rd' : b.day + 'th';
+    return `<div class="bill-row">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="bill-dot-large" style="background:${b.color||'#f2a83a'};"></div>
+        <div>
+          <div class="bill-name">${b.name}</div>
+          <div class="bill-meta">${b.category} · ${nthStr} of each month</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="bill-amount" style="color:${col};">${sign}${fmt(b.amount)}</div>
+        <button class="btn btn-danger" onclick="deleteBill(${b.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════
@@ -1364,6 +2083,9 @@ function refreshDashboard() {
       }
     }
   });
+
+  // Render calendar (stays on current viewed month, doesn't reset to today)
+  renderCalendar();
 }
 
 // ═══════════════════════════════════
@@ -1611,8 +2333,302 @@ function refreshGoals() {
 }
 
 // ═══════════════════════════════════
-// CSV IMPORT
+// CSV IMPORT — Smart Bank Detection
 // ═══════════════════════════════════
+
+// ── Bank profile definitions ─────────────────────────────────────────────
+// Each profile: name, icon, accountType, exportPath, detect(headers)→bool, parse(rows,headers)→[{date,desc,rawAmt,hint?}]
+const BANK_PROFILES = [
+
+  // ─── WEALTHSIMPLE ────────────────────────────────────────────────────────
+  {
+    name: 'Wealthsimple Cash / Savings',
+    icon: '🍁',
+    accountType: 'Chequing / Savings',
+    exportPath: 'my.wealthsimple.com → Select account → Activity → Download CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // WS cash: Date, Payee, Amount  (no Transaction Type column)
+      return h.includes('payee') && h.includes('date') && h.includes('amount')
+          && !h.some(x => /transaction.?type|^type$/i.test(x));
+    },
+    parse(rows, headers) {
+      const hi = h => headers.findIndex(x => x.toLowerCase().trim() === h);
+      const di = hi('date'), pi = hi('payee'), ai = hi('amount');
+      return rows.map(r => ({ date: r[di], desc: r[pi], rawAmt: r[ai] }));
+    }
+  },
+
+  {
+    name: 'Wealthsimple Investing / TFSA / RRSP',
+    icon: '📈',
+    accountType: 'TFSA / RRSP / Investing',
+    exportPath: 'Profile → Documents → Request custom statement → Activities export → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      return h.some(x => /transaction.?type|^type$/i.test(x)) &&
+             (h.includes('description') || h.includes('activity type')) &&
+             h.includes('amount');
+    },
+    parse(rows, headers) {
+      const hi  = h => headers.findIndex(x => x.toLowerCase().trim() === h);
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hi('description') >= 0 ? hi('description') : hii('activity.?type');
+      const ai  = hi('amount');
+      const ti  = hii('transaction.?type|^type$');
+      return rows.map(r => ({
+        date: r[di],
+        desc: r[dsi] || (ti >= 0 ? r[ti] : ''),
+        rawAmt: r[ai],
+        hint: ti >= 0 ? r[ti] : null
+      }));
+    }
+  },
+
+  // ─── SIMPLII FINANCIAL ───────────────────────────────────────────────────
+  {
+    name: 'Simplii Financial',
+    icon: '🟢',
+    accountType: 'Chequing',
+    exportPath: 'Online Banking → Account Summary → Download Transactions → Intuit Quicken → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // Simplii (legacy PC Financial) exports: Date, Description, Funds Out, Funds In, Balance
+      return h.some(x => x.includes('funds out')) || h.some(x => x.includes('funds in'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description|memo|narr');
+      const foi = hii('funds out|debit');
+      const fii = hii('funds in|credit');
+      return rows.map(r => {
+        const out = parseFloat((r[foi] || '').replace(/[$,]/g,'')) || 0;
+        const inn = parseFloat((r[fii] || '').replace(/[$,]/g,'')) || 0;
+        const synthetic = inn > 0 ? inn : -out;
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  // ─── SCOTIABANK ──────────────────────────────────────────────────────────
+  {
+    name: 'Scotiabank (Chequing / Savings)',
+    icon: '🔴',
+    accountType: 'Chequing / LOC',
+    exportPath: 'Online Banking → Accounts → Download transactions → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // Scotia chequing/savings: Date, Description, Withdrawals, Deposits, Balance
+      return h.some(x => x.includes('withdrawal')) && h.some(x => x.includes('deposit'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description|memo|narr');
+      const wi  = hii('withdrawal');
+      const dpi = hii('deposit');
+      return rows.map(r => {
+        const w = parseFloat((r[wi]  || '').replace(/[$,]/g,'')) || 0;
+        const d = parseFloat((r[dpi] || '').replace(/[$,]/g,'')) || 0;
+        const synthetic = d > 0 ? d : -w;
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  {
+    name: 'Scotiabank Credit Card',
+    icon: '🔴',
+    accountType: 'Credit Card',
+    exportPath: 'Online Banking → Credit Card account → Download transactions → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // Scotia credit card CSV: Date, Description, Amount  (no separate withdrawal/deposit)
+      // Distinguished from generic by Scotia-specific column ordering & presence of balance
+      return h.includes('date') && h.includes('description') &&
+             h.some(x => x === 'amount') && h.some(x => x.includes('balance')) &&
+             !h.some(x => x.includes('withdrawal'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description');
+      const ai  = hii('^amount$');
+      return rows.map(r => {
+        // Credit card: positive = charge (expense), negative = payment/credit (income)
+        const raw = parseFloat((r[ai] || '').replace(/[$,]/g,'').replace(/\u2212/g,'-'));
+        const synthetic = isNaN(raw) ? 0 : -raw; // flip: charge becomes negative
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  // ─── TD BANK ─────────────────────────────────────────────────────────────
+  {
+    name: 'TD Bank (Chequing / Savings)',
+    icon: '🟩',
+    accountType: 'Chequing',
+    exportPath: 'EasyWeb → Accounts → Download transactions → CSV (Other)',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // TD chequing/savings: Date, Description, Debit, Credit, Balance
+      return h.includes('debit') && h.includes('credit') && h.includes('date')
+          && !h.some(x => /transaction.?date|posting.?date/i.test(x));
+    },
+    parse(rows, headers) {
+      const hi = h => headers.findIndex(x => x.toLowerCase().trim() === h);
+      const di = hi('date'), dsi = hi('description');
+      const dbi = hi('debit'), cri = hi('credit');
+      return rows.map(r => {
+        const debit  = parseFloat((r[dbi] || '').replace(/[$,]/g,'')) || 0;
+        const credit = parseFloat((r[cri] || '').replace(/[$,]/g,'')) || 0;
+        const synthetic = credit > 0 ? credit : -debit;
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  {
+    name: 'TD Credit Card',
+    icon: '🟩',
+    accountType: 'Credit Card',
+    exportPath: 'EasyWeb → Credit Card account → Download transactions → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // TD credit card: Transaction Date, Posting Date, Description, Amount
+      return h.some(x => x.includes('transaction date') || x.includes('posting date'))
+          && h.some(x => x === 'amount' || x.includes('amount'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('transaction.?date');
+      const dsi = hii('description|memo');
+      const ai  = hii('^amount$|transaction.?amount');
+      return rows.map(r => {
+        // TD CC: positive amount = charge (expense), negative = payment
+        const raw = parseFloat((r[ai] || '').replace(/[$,]/g,'').replace(/\u2212/g,'-'));
+        const synthetic = isNaN(raw) ? 0 : -raw;
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  // ─── CIBC ─────────────────────────────────────────────────────────────────
+  {
+    name: 'CIBC Credit Card',
+    icon: '🔵',
+    accountType: 'Credit Card',
+    exportPath: 'Online Banking → Credit Card → Download → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      // CIBC CC: Date, Description, Debit, Credit  (same split-column pattern as TD chequing
+      // but distinguished by presence of "card" in filename hint — we rely on order priority)
+      return h.includes('date') && h.includes('description')
+          && h.includes('debit') && h.includes('credit')
+          && !h.includes('balance');  // CIBC CC has no Balance column; TD chequing does
+    },
+    parse(rows, headers) {
+      const hi = h => headers.findIndex(x => x.toLowerCase().trim() === h);
+      const di = hi('date'), dsi = hi('description');
+      const dbi = hi('debit'), cri = hi('credit');
+      return rows.map(r => {
+        // CIBC CC: Debit = charge (expense), Credit = payment (income)
+        const debit  = parseFloat((r[dbi] || '').replace(/[$,]/g,'')) || 0;
+        const credit = parseFloat((r[cri] || '').replace(/[$,]/g,'')) || 0;
+        const synthetic = credit > 0 ? credit : -debit;
+        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
+      });
+    }
+  },
+
+  // ─── SUN LIFE ─────────────────────────────────────────────────────────────
+  {
+    name: 'Sun Life (RRSP / Investments)',
+    icon: '☀️',
+    accountType: 'RRSP / Investment',
+    exportPath: 'mysunlife.ca → My money → View account activity → Export to CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      return h.some(x => x.includes('transaction type')) &&
+             h.some(x => x.includes('fund') || x.includes('unit'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description|transaction.?type|fund.?name');
+      const ai  = hii('amount|value|net.?amount');
+      const ti  = hii('transaction.?type');
+      return rows.map(r => ({
+        date: r[di],
+        desc: r[dsi],
+        rawAmt: r[ai],
+        hint: ti >= 0 ? r[ti] : null
+      }));
+    }
+  },
+
+  // ─── RBC ──────────────────────────────────────────────────────────────────
+  {
+    name: 'RBC',
+    icon: '🏦',
+    accountType: 'Chequing / Credit Card',
+    exportPath: 'Online Banking → Account → Download Transactions → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      return h.some(x => x.includes('account type')) && h.some(x => x.includes('cad'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description 1|description');
+      const ai  = hii('cad');
+      return rows.map(r => ({ date: r[di], desc: r[dsi], rawAmt: r[ai] }));
+    }
+  },
+
+  // ─── BMO ──────────────────────────────────────────────────────────────────
+  {
+    name: 'BMO',
+    icon: '🏦',
+    accountType: 'Chequing / Credit Card',
+    exportPath: 'Online Banking → My Accounts → Export transactions → CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().trim());
+      return h.some(x => x.includes('first bank field')) ||
+             (h.includes('date') && h.some(x => x === 'amount') && h.some(x => x.includes('description'))
+              && !h.includes('debit') && !h.includes('credit') && !h.includes('balance'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = hii('date');
+      const dsi = hii('description');
+      const ai  = hii('^amount$');
+      return rows.map(r => ({ date: r[di], desc: r[dsi], rawAmt: r[ai] }));
+    }
+  },
+
+  // ─── GENERIC FALLBACK ──────────────────────────────────────────────────────
+  {
+    name: 'Generic CSV',
+    icon: '📄',
+    accountType: 'Any',
+    exportPath: 'Use manual column map below',
+    detect() { return true; },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
+      const di  = Math.max(hii('date'), 0);
+      const dsi = Math.max(hii('desc|payee|merchant|memo|narr'), 1);
+      const ai  = Math.max(hii('^amount$|debit|credit'), 2);
+      return rows.map(r => ({ date: r[di], desc: r[dsi], rawAmt: r[ai] }));
+    }
+  }
+];
+
+let detectedProfile = null;
+
+// ── Drag / drop / file input ─────────────────────────────────────────────
 function handleDragOver(e) { e.preventDefault(); $('drop-zone').classList.add('dragover'); }
 function handleDragLeave() { $('drop-zone').classList.remove('dragover'); }
 function handleDrop(e) {
@@ -1622,38 +2638,70 @@ function handleDrop(e) {
   if (f) handleCSVFile(f);
 }
 
+function parseCSVLine(line) {
+  // Handles quoted fields properly (e.g. "Smith, John","$1,234.00")
+  const result = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur.trim()); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
 function handleCSVFile(file) {
-  if (!file || !file.name.endsWith('.csv')) { showToast('Please upload a CSV file.'); return; }
+  if (!file || !file.name.toLowerCase().endsWith('.csv')) { showToast('Please upload a CSV file.'); return; }
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.trim().split('\n').map(l => l.split(',').map(c => c.replace(/^"|"$/g, '').trim()));
-    csvHeaders = lines[0];
-    csvRows = lines.slice(1).filter(r => r.length >= 2);
+    const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+    csvHeaders = parseCSVLine(lines[0]);
+    csvRows = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
+
+    // ── Auto-detect bank ────────────────────────────────────────────────
+    detectedProfile = BANK_PROFILES.find(p => p.detect(csvHeaders)) || BANK_PROFILES[BANK_PROFILES.length - 1];
+    showDetectBanner(detectedProfile);
     renderCSVPreview();
   };
   reader.readAsText(file);
+}
+
+function showDetectBanner(profile) {
+  const banner = $('detect-banner');
+  $('detect-icon').textContent = profile.icon;
+  $('detect-label').textContent = profile.name + ' detected';
+  $('detect-desc').textContent = '— columns mapped automatically';
+  banner.style.display = 'flex';
 }
 
 function renderCSVPreview() {
   const preview = $('csv-preview');
   preview.style.display = 'block';
 
+  // Populate manual override dropdowns
   ['col-date', 'col-desc', 'col-amount'].forEach(id => {
     const sel = $(id);
     sel.innerHTML = csvHeaders.map((h, i) => `<option value="${i}">${h}</option>`).join('');
   });
 
-  // Auto-detect columns
+  // Best-effort auto-map for the manual dropdowns (as fallback reference)
   csvHeaders.forEach((h, i) => {
     const hl = h.toLowerCase();
     if (/date/.test(hl)) $('col-date').value = i;
-    if (/desc|merchant|payee|memo/.test(hl)) $('col-desc').value = i;
-    if (/amount|debit|credit/.test(hl)) $('col-amount').value = i;
+    if (/desc|merchant|payee|memo|narr/.test(hl)) $('col-desc').value = i;
+    if (/^amount$|cad|debit|credit/.test(hl)) $('col-amount').value = i;
   });
 
-  const table = $('csv-preview-table');
+  // Show preview table (first 5 rows)
   const preview5 = csvRows.slice(0, 5);
-  table.innerHTML = `
+  $('csv-preview-table').innerHTML = `
     <thead><tr>${csvHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
     <tbody>${preview5.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
   `;
@@ -1664,39 +2712,65 @@ function makeDupeKey(date, desc, amount) {
 }
 
 function importCSV() {
-  const ci = parseInt($('col-date').value);
-  const di = parseInt($('col-desc').value);
-  const ai = parseInt($('col-amount').value);
-  let imported = 0;
-  let skipped = 0;
+  let imported = 0, skipped = 0, bad = 0;
 
-  // Build fingerprint set from existing transactions for O(1) lookup
+  // Use detected bank profile to parse rows into normalised {date, desc, rawAmt}
+  const profile = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
+  const parsed = profile.parse(csvRows, csvHeaders);
+
+  // Build fingerprint set of existing transactions
   const existingKeys = new Set(
     state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount))
   );
 
-  csvRows.forEach((row, idx) => {
-    const date = row[ci];
-    const desc = row[di];
-    const rawAmt = parseFloat((row[ai] || '').replace(/[$,]/g, ''));
-    if (!desc || isNaN(rawAmt)) return;
-    const amount = Math.abs(rawAmt);
-    const type = rawAmt < 0 ? 'expense' : 'income';
-    const key = makeDupeKey(normalizeDate(date), desc, amount);
+  parsed.forEach((item, idx) => {
+    if (!item.desc || !item.date) { bad++; return; }
 
+    // Clean amount — handle Unicode minus (Wealthsimple credit card quirk)
+    const cleanedAmt = (item.rawAmt || '')
+      .toString()
+      .replace(/\u2212/g, '-')   // Unicode minus → ASCII minus
+      .replace(/[$,\s]/g, '');
+
+    const rawAmt = parseFloat(cleanedAmt);
+    if (isNaN(rawAmt)) { bad++; return; }
+
+    const amount = Math.abs(rawAmt);
+    const date   = normalizeDate(item.date);
+
+    // Determine income vs expense:
+    // 1. Use hint from profile (e.g. Wealthsimple investing transaction type)
+    // 2. Otherwise use sign of raw amount
+    let type;
+    if (item.hint) {
+      const h = item.hint.toLowerCase();
+      type = /deposit|dividend|interest|credit|buy|income|transfer.?in/.test(h) ? 'income' : 'expense';
+    } else {
+      type = rawAmt >= 0 ? 'income' : 'expense';
+    }
+
+    const key = makeDupeKey(date, item.desc, amount);
     if (existingKeys.has(key)) { skipped++; return; }
 
-    existingKeys.add(key); // also catches dupes within the CSV itself
-    state.transactions.push({ id: Date.now() + idx, date: normalizeDate(date), desc, amount, type, category: guessCategory(desc) });
+    existingKeys.add(key);
+    state.transactions.push({
+      id: Date.now() + idx,
+      date,
+      desc: item.desc,
+      amount,
+      type,
+      category: guessCategory(item.desc)
+    });
     imported++;
   });
 
   saveState();
   $('csv-preview').style.display = 'none';
-  const msg = skipped > 0
-    ? `${imported} imported · ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`
-    : `${imported} transactions imported!`;
-  showToast(msg);
+  $('detect-banner').style.display = 'none';
+  const parts = [`${imported} imported`];
+  if (skipped > 0) parts.push(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+  if (bad > 0)     parts.push(`${bad} unreadable rows ignored`);
+  showToast(parts.join(' · '));
   refreshDashboard();
 }
 
@@ -1721,6 +2795,109 @@ function guessCategory(desc) {
   if (/amazon|walmart|target|shopping/.test(d)) return 'Shopping';
   if (/salary|payroll|deposit|employer/.test(d)) return 'Salary';
   return 'Other';
+}
+
+// ═══════════════════════════════════
+// MY FINANCES HUB
+// ═══════════════════════════════════
+
+// hub state lives inside state.hub — a flat object of named fields
+// Keys: homeValue, mortgage, car1Value, car1Loan, car2Value, car2Loan, studentLoan, loc
+
+function saveHubField(key, val) {
+  if (!state.hub) state.hub = {};
+  state.hub[key] = parseFloat(val) || 0;
+  saveState();
+}
+
+function loadHubInputs() {
+  if (!state.hub) state.hub = {};
+  const fields = {
+    'hub-home-value':  'homeValue',
+    'hub-mortgage':    'mortgage',
+    'hub-car1-value':  'car1Value',
+    'hub-car1-loan':   'car1Loan',
+    'hub-car2-value':  'car2Value',
+    'hub-car2-loan':   'car2Loan',
+    'hub-student-loan':'studentLoan',
+    'hub-loc':         'loc'
+  };
+  Object.entries(fields).forEach(([id, key]) => {
+    const el = $(id);
+    if (el && state.hub[key]) el.value = state.hub[key];
+  });
+  refreshNetWorthFromHub();
+}
+
+function hubVal(key) {
+  return (state.hub && state.hub[key]) ? parseFloat(state.hub[key]) || 0 : 0;
+}
+
+function refreshNetWorthFromHub() {
+  const h = state.hub || {};
+  const homeVal  = hubVal('homeValue');
+  const mortgage = hubVal('mortgage');
+  const car1Val  = hubVal('car1Value');
+  const car1Loan = hubVal('car1Loan');
+  const car2Val  = hubVal('car2Value');
+  const car2Loan = hubVal('car2Loan');
+  const studentLoan = hubVal('studentLoan');
+  const loc      = hubVal('loc');
+
+  // Equity badges
+  function setEquityBadge(id, assetVal, debtVal) {
+    const el = $(id);
+    if (!el) return;
+    if (assetVal === 0 && debtVal === 0) { el.style.display = 'none'; return; }
+    const equity = assetVal - debtVal;
+    el.style.display = 'inline-block';
+    el.className = 'hub-equity-badge ' + (equity >= 0 ? 'pos' : 'neg');
+    el.textContent = 'Equity: ' + (equity >= 0 ? '' : '-') + fmt(equity);
+  }
+  setEquityBadge('home-equity-badge', homeVal, mortgage);
+  setEquityBadge('car1-equity-badge', car1Val, car1Loan);
+  setEquityBadge('car2-equity-badge', car2Val, car2Loan);
+
+  // Summary totals
+  const totalAssets = homeVal + car1Val + car2Val;
+  const totalDebts  = mortgage + car1Loan + car2Loan + studentLoan + loc;
+  const netEquity   = totalAssets - totalDebts;
+
+  const ta = $('hub-total-assets');
+  const td = $('hub-total-debts');
+  const ne = $('hub-net-equity');
+  if (ta) ta.textContent = fmt(totalAssets);
+  if (td) td.textContent = fmt(totalDebts);
+  if (ne) {
+    ne.textContent = (netEquity >= 0 ? '' : '-') + fmt(netEquity);
+    ne.className = 'stat-value ' + (netEquity >= 0 ? 'positive' : 'negative');
+    ne.style.fontSize = '22px';
+  }
+
+  // ── Sync into state.assets / state.liabilities so Net Worth page reflects these ──
+  // We use reserved IDs (negative numbers) to identify hub-managed entries
+  const hubAssets = [
+    { id: -1, name: 'Home',      type: 'Real Estate', value: homeVal },
+    { id: -2, name: 'Vehicle 1', type: 'Vehicle',     value: car1Val },
+    { id: -3, name: 'Vehicle 2', type: 'Vehicle',     value: car2Val },
+  ].filter(a => a.value > 0);
+
+  const hubLiabilities = [
+    { id: -1, name: 'Mortgage',              type: 'Mortgage',                    value: mortgage },
+    { id: -2, name: 'Vehicle 1 Loan',        type: 'Auto Loan',                   value: car1Loan },
+    { id: -3, name: 'Vehicle 2 Loan',        type: 'Auto Loan',                   value: car2Loan },
+    { id: -4, name: 'Student Loan (NSLSC)',  type: 'Government Student Loan',     value: studentLoan },
+    { id: -5, name: 'Line of Credit (Scotia)', type: 'Line of Credit',            value: loc },
+  ].filter(l => l.value > 0);
+
+  // Remove old hub entries (negative IDs) and replace with fresh ones
+  state.assets      = state.assets.filter(a => a.id > 0).concat(hubAssets);
+  state.liabilities = state.liabilities.filter(l => l.id > 0).concat(hubLiabilities);
+}
+
+function toggleGuide() {
+  const g = $('export-guide');
+  if (g) g.style.display = g.style.display === 'none' ? 'block' : 'none';
 }
 
 // ═══════════════════════════════════
@@ -1800,6 +2977,7 @@ function clearAllData() {
 // ═══════════════════════════════════
 $('today-date').textContent = new Date().toLocaleDateString('en-CA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 $('tx-date').value = today();
+calInit();
 
 const hadSavedData = loadState();
 
@@ -1833,6 +3011,7 @@ if (!hadSavedData) {
 }
 
 refreshDashboard();
+loadHubInputs();
 </script>
 </body>
 </html>
