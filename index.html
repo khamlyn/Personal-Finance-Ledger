@@ -844,6 +844,119 @@
   .bill-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; }
 
 
+  /* HOLDINGS */
+  .holdings-account-block {
+    margin-bottom: 24px;
+  }
+
+  .holdings-account-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-radius: 10px 10px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+  }
+
+  .holdings-account-name {
+    font-family: var(--serif);
+    font-size: 18px;
+  }
+
+  .holdings-account-type {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .holdings-account-value {
+    text-align: right;
+  }
+
+  .holdings-account-mkt {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--accent);
+  }
+
+  .holdings-account-gain {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .holdings-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+  }
+
+  .holdings-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .holdings-table th.num { text-align: right; }
+
+  .holdings-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(42,47,42,0.4);
+    background: var(--surface);
+    vertical-align: middle;
+  }
+
+  .holdings-table tr:last-child td { border-bottom: none; }
+  .holdings-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .holdings-table td.num {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .holding-symbol {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .holding-name {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .security-type-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .gain-positive { color: var(--accent); }
+  .gain-negative { color: var(--red); }
+
+
   /* HUB CARDS */
   .hub-grid {
     display: grid;
@@ -914,6 +1027,9 @@
       </div>
       <div class="nav-item" onclick="switchView('hub')">
         <span class="nav-icon">⊕</span> My Finances
+      </div>
+      <div class="nav-item" onclick="switchView('holdings')">
+        <span class="nav-icon">◭</span> Holdings
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -1340,6 +1456,67 @@
 
     </div>
 
+    <!-- ═══════════ HOLDINGS ═══════════ -->
+    <div id="view-holdings" class="view">
+      <div class="page-header">
+        <div class="page-title">Holdings</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span id="holdings-as-of" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+          <button class="btn btn-ghost" onclick="document.getElementById('holdings-csv-file').click()">⇡ Import Holdings CSV</button>
+          <input type="file" id="holdings-csv-file" accept=".csv" style="display:none" onchange="importHoldingsCSV(this.files[0]); this.value='';">
+        </div>
+      </div>
+
+      <!-- Summary stat cards -->
+      <div class="stat-grid" style="margin-bottom:24px;">
+        <div class="stat-card green">
+          <div class="stat-label">Total Portfolio</div>
+          <div class="stat-value positive" id="h-total-value">$0</div>
+          <div class="stat-change">market value</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Total Book Value</div>
+          <div class="stat-value" id="h-total-book">$0</div>
+          <div class="stat-change">cost basis</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Unrealized Gain</div>
+          <div class="stat-value" id="h-total-gain">$0</div>
+          <div class="stat-change" id="h-total-gain-pct">—</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Accounts</div>
+          <div class="stat-value" id="h-account-count">0</div>
+          <div class="stat-change" id="h-holding-count">0 positions</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="two-col" style="margin-bottom:24px;">
+        <div class="chart-card">
+          <div class="chart-card-title">Portfolio by Account</div>
+          <canvas id="chart-holdings-accounts" style="max-height:240px;"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Holdings by Position</div>
+          <canvas id="chart-holdings-positions" style="max-height:240px;"></canvas>
+        </div>
+      </div>
+
+      <!-- Account breakdown -->
+      <div id="holdings-accounts-section">
+        <div class="empty-state" style="padding:60px;">
+          <div class="empty-icon">◭</div>
+          <div class="empty-text" style="margin-bottom:16px;">No holdings imported yet.</div>
+          <button class="btn btn-primary" onclick="document.getElementById('holdings-csv-file').click()">⇡ Import Wealthsimple Holdings CSV</button>
+          <div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+            Wealthsimple → Profile → Documents → Holdings report → Download CSV
+          </div>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 </div>
 
@@ -1611,7 +1788,8 @@ let state = {
   liabilities: [],
   goals: [],
   hub: {},
-  bills: []
+  bills: [],
+  holdings: []   // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
 };
 
 let txFilter = 'all';
@@ -1654,6 +1832,7 @@ function switchView(view) {
   if (view === 'savings') refreshGoals();
   if (view === 'transactions') refreshTransactions();
   if (view === 'hub') loadHubInputs();
+  if (view === 'holdings') refreshHoldings();
 }
 
 // ═══════════════════════════════════
@@ -2901,6 +3080,271 @@ function toggleGuide() {
 }
 
 // ═══════════════════════════════════
+// HOLDINGS
+// ═══════════════════════════════════
+
+let chartHoldingsAccounts = null;
+let chartHoldingsPositions = null;
+
+function importHoldingsCSV(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const raw = e.target.result;
+    const lines = raw.trim().split(/\r?\n/).filter(l => l.trim() && !l.startsWith('"As of'));
+
+    // Find the "As of" timestamp
+    const asOfMatch = raw.match(/As of (\d{4}-\d{2}-\d{2}[^"]*)/);
+    const asOf = asOfMatch ? asOfMatch[1].trim() : new Date().toISOString().slice(0,10);
+
+    if (lines.length < 2) { showToast('Could not read holdings CSV.'); return; }
+
+    const headers = parseCSVLine(lines[0]);
+    const hi = name => headers.findIndex(h => h.toLowerCase().replace(/[^a-z]/g,'').includes(name.toLowerCase().replace(/[^a-z]/g,'')));
+
+    // Detect Wealthsimple holdings format
+    const isWS = headers.some(h => /account.?name/i.test(h)) &&
+                 headers.some(h => /market.?value/i.test(h)) &&
+                 headers.some(h => /book.?value/i.test(h));
+
+    if (!isWS) {
+      showToast('Unrecognized holdings format. Expected Wealthsimple Holdings CSV.');
+      return;
+    }
+
+    const rows = lines.slice(1).map(parseCSVLine).filter(r => r.length > 5 && r[0]);
+
+    const parsed = rows.map(r => {
+      const get = name => {
+        const i = hi(name);
+        return i >= 0 ? (r[i] || '').trim() : '';
+      };
+      const getNum = name => parseFloat(get(name)) || 0;
+
+      return {
+        account:        get('AccountName'),
+        accountType:    get('AccountType'),
+        accountNumber:  get('AccountNumber'),
+        symbol:         get('Symbol'),
+        exchange:       get('Exchange'),
+        name:           get('Name'),
+        securityType:   get('SecurityType').replace(/_/g,' ').toLowerCase()
+                          .replace(/\b\w/g, c => c.toUpperCase()),
+        qty:            getNum('Quantity'),
+        price:          getNum('MarketPrice'),
+        priceCurrency:  get('MarketPriceCurrency'),
+        bookValue:      getNum('BookValueCAD'),
+        marketValue:    getNum('MarketValue'),
+        unrealizedGain: getNum('MarketUnrealizedReturns'),
+        asOf
+      };
+    }).filter(h => h.symbol && h.marketValue > 0);
+
+    if (parsed.length === 0) { showToast('No valid holdings found in file.'); return; }
+
+    state.holdings = parsed;
+    saveState();
+    refreshHoldings();
+    syncHoldingsToNetWorth();
+    showToast(`${parsed.length} holdings imported across ${new Set(parsed.map(h=>h.account)).size} accounts!`);
+  };
+  reader.readAsText(file);
+}
+
+function syncHoldingsToNetWorth() {
+  // Roll up each account as an asset with reserved negative IDs starting at -10
+  if (!state.holdings.length) return;
+
+  const accounts = {};
+  state.holdings.forEach(h => {
+    if (!accounts[h.account]) accounts[h.account] = { name: h.account, type: h.accountType, value: 0 };
+    accounts[h.account].value += h.marketValue;
+  });
+
+  // Remove old holdings-synced assets (IDs -10 to -99)
+  state.assets = state.assets.filter(a => a.id > 0 || (a.id < -9 ? false : true));
+  // Actually: remove any with id <= -10
+  state.assets = state.assets.filter(a => a.id > -10);
+
+  Object.values(accounts).forEach((acc, i) => {
+    state.assets.push({ id: -(10 + i), name: acc.name + ' (' + acc.type + ')', type: 'Investment', value: Math.round(acc.value * 100) / 100 });
+  });
+  saveState();
+}
+
+function refreshHoldings() {
+  if (!state.holdings || state.holdings.length === 0) {
+    // Show empty state — already in HTML
+    ['h-total-value','h-total-book','h-total-gain','h-account-count','h-holding-count','holdings-as-of'].forEach(id => {
+      const el = $(id); if(el) el.textContent = id.includes('count') ? '0' : '$0';
+    });
+    $('holdings-accounts-section').innerHTML = `<div class="empty-state" style="padding:60px;">
+      <div class="empty-icon">◭</div>
+      <div class="empty-text" style="margin-bottom:16px;">No holdings imported yet.</div>
+      <button class="btn btn-primary" onclick="document.getElementById('holdings-csv-file').click()">⇡ Import Wealthsimple Holdings CSV</button>
+      <div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--muted);">
+        Wealthsimple → Profile → Documents → Holdings report → Download CSV
+      </div>
+    </div>`;
+    return;
+  }
+
+  const h = state.holdings;
+
+  // Totals
+  const totalMkt   = h.reduce((s,x) => s + x.marketValue, 0);
+  const totalBook  = h.reduce((s,x) => s + x.bookValue, 0);
+  const totalGain  = h.reduce((s,x) => s + x.unrealizedGain, 0);
+  const gainPct    = totalBook > 0 ? ((totalGain / totalBook) * 100) : 0;
+
+  const tvEl = $('h-total-value');
+  const tbEl = $('h-total-book');
+  const tgEl = $('h-total-gain');
+  const tgpEl = $('h-total-gain-pct');
+  const acEl = $('h-account-count');
+  const hcEl = $('h-holding-count');
+  const aoEl = $('holdings-as-of');
+
+  if (tvEl) tvEl.textContent = fmt(totalMkt);
+  if (tbEl) tbEl.textContent = fmt(totalBook);
+  if (tgEl) {
+    tgEl.textContent = (totalGain >= 0 ? '+' : '') + fmt(totalGain);
+    tgEl.className = 'stat-value ' + (totalGain >= 0 ? 'positive' : 'negative');
+  }
+  if (tgpEl) tgpEl.textContent = (gainPct >= 0 ? '+' : '') + gainPct.toFixed(2) + '% unrealized';
+  const accounts = [...new Set(h.map(x => x.account))];
+  if (acEl) acEl.textContent = accounts.length;
+  if (hcEl) hcEl.textContent = h.length + ' position' + (h.length !== 1 ? 's' : '');
+  if (aoEl) aoEl.textContent = 'As of ' + (h[0].asOf || '');
+
+  // ── Chart 1: by account (doughnut) ──────────────────────────────────
+  const acctTotals = {};
+  h.forEach(x => { acctTotals[x.account] = (acctTotals[x.account] || 0) + x.marketValue; });
+  const acctLabels = Object.keys(acctTotals);
+  const acctData   = Object.values(acctTotals);
+  const palette    = ['#b5f23a','#3af2a8','#f2a83a','#f25a3a','#3ab5f2','#a83af2'];
+
+  if (chartHoldingsAccounts) chartHoldingsAccounts.destroy();
+  const ctx1 = $('chart-holdings-accounts');
+  if (ctx1) {
+    chartHoldingsAccounts = new Chart(ctx1.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: acctLabels,
+        datasets: [{ data: acctData, backgroundColor: palette, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#a0aaa0', font: { family: 'DM Mono', size: 10 }, padding: 10 } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)} (${((ctx.raw/totalMkt)*100).toFixed(1)}%)`
+            }
+          }
+        },
+        cutout: '60%'
+      }
+    });
+  }
+
+  // ── Chart 2: by position (horizontal bar) ───────────────────────────
+  const posSorted = [...h].sort((a, b) => b.marketValue - a.marketValue);
+  const posLabels = posSorted.map(x => x.symbol);
+  const posData   = posSorted.map(x => x.marketValue);
+  const posColors = posSorted.map((x,i) => palette[i % palette.length]);
+
+  if (chartHoldingsPositions) chartHoldingsPositions.destroy();
+  const ctx2 = $('chart-holdings-positions');
+  if (ctx2) {
+    chartHoldingsPositions = new Chart(ctx2.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: posLabels,
+        datasets: [{ data: posData, backgroundColor: posColors, borderRadius: 4 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${fmt(ctx.raw)} (${((ctx.raw/totalMkt)*100).toFixed(1)}%)`
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#6b756b', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0)+'k' }, grid: { color: '#1b1f1b' } },
+          y: { ticks: { color: '#a0aaa0', font: { family: 'DM Mono', size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // ── Per-account tables ───────────────────────────────────────────────
+  const section = $('holdings-accounts-section');
+  if (!section) return;
+
+  section.innerHTML = accounts.map(acct => {
+    const rows  = h.filter(x => x.account === acct);
+    const acctMkt  = rows.reduce((s,x) => s + x.marketValue, 0);
+    const acctBook = rows.reduce((s,x) => s + x.bookValue, 0);
+    const acctGain = rows.reduce((s,x) => s + x.unrealizedGain, 0);
+    const acctType = rows[0].accountType;
+    const gainCls  = acctGain >= 0 ? 'gain-positive' : 'gain-negative';
+    const gainSign = acctGain >= 0 ? '+' : '';
+
+    const rowsHTML = rows.map(r => {
+      const gc   = r.unrealizedGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gSign= r.unrealizedGain >= 0 ? '+' : '';
+      const gPct = r.bookValue > 0 ? ((r.unrealizedGain / r.bookValue) * 100).toFixed(2) : '—';
+      const wt   = totalMkt > 0 ? ((r.marketValue / totalMkt) * 100).toFixed(1) : '0';
+      const secLabel = r.securityType === 'Exchange Traded Fund' ? 'ETF'
+                     : r.securityType === 'Equity' ? 'Stock'
+                     : r.securityType;
+      return `<tr>
+        <td>
+          <div class="holding-symbol">${r.symbol}</div>
+          <div class="holding-name">${r.name}</div>
+        </td>
+        <td><span class="security-type-pill">${secLabel}</span></td>
+        <td class="num">${r.qty.toLocaleString('en-CA', {maximumFractionDigits: 4})}</td>
+        <td class="num">${fmt(r.price)}</td>
+        <td class="num">${fmt(r.bookValue)}</td>
+        <td class="num">${fmt(r.marketValue)}</td>
+        <td class="num ${gc}">${gSign}${fmt(r.unrealizedGain)}<br><span style="font-size:10px;opacity:0.8;">${gSign}${gPct}%</span></td>
+        <td class="num" style="color:var(--muted);">${wt}%</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="holdings-account-block">
+      <div class="holdings-account-header">
+        <div>
+          <div class="holdings-account-name">${acct}</div>
+          <div class="holdings-account-type">${acctType} · ${rows.length} position${rows.length!==1?'s':''}</div>
+        </div>
+        <div class="holdings-account-value">
+          <div class="holdings-account-mkt">${fmt(acctMkt)}</div>
+          <div class="holdings-account-gain ${gainCls}">${gainSign}${fmt(acctGain)} unrealized</div>
+        </div>
+      </div>
+      <table class="holdings-table">
+        <thead>
+          <tr>
+            <th>Security</th><th>Type</th>
+            <th class="num">Qty</th><th class="num">Price</th>
+            <th class="num">Book Value</th><th class="num">Market Value</th>
+            <th class="num">Unrealized G/L</th><th class="num">Weight</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
 // PERSISTENCE — localStorage
 // ═══════════════════════════════════
 const STORAGE_KEY = 'ledger_v1';
@@ -2922,6 +3366,8 @@ function loadState() {
       Object.keys(state).forEach(k => {
         if (saved[k] !== undefined) state[k] = saved[k];
       });
+      if (!state.holdings) state.holdings = [];
+      if (!state.bills)    state.bills    = [];
       return true;
     }
   } catch(e) {
@@ -3012,6 +3458,7 @@ if (!hadSavedData) {
 
 refreshDashboard();
 loadHubInputs();
+if (state.holdings && state.holdings.length) syncHoldingsToNetWorth();
 </script>
 </body>
 </html>
