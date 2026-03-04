@@ -302,8 +302,10 @@
   .tx-table tr:last-child td { border-bottom: none; }
   .tx-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-  .tx-amount.income { color: var(--accent); font-family: var(--mono); }
-  .tx-amount.expense { color: var(--red); font-family: var(--mono); }
+  .tx-amount.income  { color: var(--accent);  font-family: var(--mono); }
+  .tx-amount.expense { color: var(--red);    font-family: var(--mono); }
+  .tx-amount.invest    { color: var(--accent3); font-family: var(--mono); }
+  .tx-amount.transfer { color: var(--muted);   font-family: var(--mono); }
 
   .category-pill {
     display: inline-block;
@@ -1292,7 +1294,7 @@
         <div id="export-guide" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; line-height:2.1; color:#a0aaa0;">
           <strong style="color:var(--accent)">🍁 Wealthsimple (all accounts — recommended):</strong> Profile → Documents → <strong style="color:var(--text)">Activities export → Download CSV</strong><br>
           <strong style="color:var(--accent)">🍁 Wealthsimple Cash (per account):</strong> Select account → Activity → <strong style="color:var(--text)">Download CSV</strong><br>
-          <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account Summary → <strong style="color:var(--text)">Download Transactions → Intuit Quicken → CSV</strong><br>
+          <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account History → <strong style="color:var(--text)">Download → CSV (Quicken/Excel format)</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
@@ -1536,6 +1538,8 @@
         <select class="form-select" id="tx-type">
           <option value="expense">Expense</option>
           <option value="income">Income</option>
+          <option value="invest">Investment</option>
+          <option value="transfer">Transfer (between own accounts)</option>
         </select>
       </div>
     </div>
@@ -1885,8 +1889,8 @@ function refreshTransactions() {
       <td><span class="highlight-val">${t.date}</span></td>
       <td>${t.desc}</td>
       <td><span class="category-pill">${t.category}</span></td>
-      <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
-      <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'} ${fmt(t.amount)}</td>
+      <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
+      <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>
   `).join('');
@@ -2163,6 +2167,7 @@ function refreshDashboard() {
 
   const income = thisMo.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const spending = thisMo.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const investing = thisMo.filter(t => t.type === 'invest').reduce((s, t) => s + t.amount, 0);
   const balance = income - spending;
   const netWorth = state.assets.reduce((s, a) => s + a.value, 0) - state.liabilities.reduce((s, l) => s + l.value, 0);
 
@@ -2184,15 +2189,15 @@ function refreshDashboard() {
         <td><span class="highlight-val">${t.date}</span></td>
         <td>${t.desc}</td>
         <td><span class="category-pill">${t.category}</span></td>
-        <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
-        <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'} ${fmt(t.amount)}</td>
+        <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
+        <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
       </tr>
     `).join('');
   }
 
   // Category Chart
   const cats = {};
-  thisMo.filter(t => t.type === 'expense').forEach(t => {
+  thisMo.filter(t => t.type === 'expense' || t.type === 'invest').forEach(t => {
     cats[t.category] = (cats[t.category] || 0) + t.amount;
   });
 
@@ -2593,10 +2598,16 @@ const BANK_PROFILES = [
         let hint = null;
         if (incomeActTypes.has(actType)) hint = 'income';
         else if (actType === 'MoneyMovement') {
-          // Positive = money coming in (income), negative = going out (expense)
-          hint = amt >= 0 ? 'income' : 'expense';
+          if (subType === 'EFT') {
+            // EFT = external bank transfer (to/from Simplii) — flag for cross-account dedup
+            hint = amt >= 0 ? 'xfer-in' : 'xfer-out';
+          } else if (subType === 'AFT_IN') {
+            hint = 'income';  // payroll direct deposit — always real income
+          } else {
+            hint = amt >= 0 ? 'income' : 'expense';
+          }
         } else if (actType === 'Trade') {
-          hint = amt >= 0 ? 'income' : 'expense'; // SELL = positive, BUY = negative
+          hint = amt >= 0 ? 'income' : 'invest'; // SELL = income, BUY = invest (not expense)
         } else if (actType === 'Fee') {
           hint = 'expense';
         } else {
@@ -2664,24 +2675,45 @@ const BANK_PROFILES = [
     name: 'Simplii Financial',
     icon: '🟢',
     accountType: 'Chequing',
-    exportPath: 'Online Banking → Account Summary → Download Transactions → Intuit Quicken → CSV',
+    exportPath: 'Online Banking → Account History → Download → CSV (Quicken/Excel)',
     detect(headers) {
+      // Actual Simplii format: "Date", " Transaction Details", " Funds Out", " Funds In "
+      // Headers may have leading/trailing spaces — normalise before checking
       const h = headers.map(x => x.toLowerCase().trim());
-      // Simplii (legacy PC Financial) exports: Date, Description, Funds Out, Funds In, Balance
-      return h.some(x => x.includes('funds out')) || h.some(x => x.includes('funds in'));
+      return (h.some(x => x.includes('funds out')) || h.some(x => x.includes('funds in')))
+          && h.some(x => x.includes('transaction') || x.includes('description') || x.includes('details'));
     },
     parse(rows, headers) {
-      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
-      const di  = hii('date');
-      const dsi = hii('description|memo|narr');
-      const foi = hii('funds out|debit');
-      const fii = hii('funds in|credit');
+      // Normalize headers — Simplii has leading spaces in column names
+      const norm = headers.map(x => x.toLowerCase().trim());
+      const ni = name => norm.findIndex(x => x.includes(name));
+      const di  = ni('date');
+      const dsi = ni('transaction') >= 0 ? ni('transaction') : ni('description') >= 0 ? ni('description') : ni('details');
+      const foi = ni('funds out');
+      const fii = ni('funds in');
+
       return rows.map(r => {
-        const out = parseFloat((r[foi] || '').replace(/[$,]/g,'')) || 0;
-        const inn = parseFloat((r[fii] || '').replace(/[$,]/g,'')) || 0;
+        const desc = (r[dsi] || '').trim();
+        const out  = parseFloat((r[foi] || '').replace(/[$,]/g,'').trim()) || 0;
+        const inn  = parseFloat((r[fii] || '').replace(/[$,]/g,'').trim()) || 0;
+
+        // Classify type via description keywords
+        // Transfers to own Wealthsimple account should be flagged for cross-account matching
+        let hint;
+        const dl = desc.toLowerCase();
+        if (/e-transfer send kurt wealthsimple|wealthsimple investments/i.test(desc)) {
+          hint = 'xfer-out';   // money leaving Simplii → Wealthsimple
+        } else if (/e-transfer receive kurt hamlyn/i.test(desc)) {
+          hint = 'xfer-in';    // money arriving from Wealthsimple → Simplii (own name)
+        } else if (inn > 0) {
+          hint = 'income';
+        } else {
+          hint = 'expense';
+        }
+
         const synthetic = inn > 0 ? inn : -out;
-        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
-      });
+        return { date: r[di] ? r[di].trim() : '', desc, rawAmt: String(synthetic), hint };
+      }).filter(r => r.desc || r.rawAmt !== '0');
     }
   },
 
@@ -3016,8 +3048,10 @@ function importCSV() {
     // 2. Keyword hint from profile (e.g. WS investing transaction type label)
     // 3. Fall back to sign of raw amount
     let type;
-    if (item.hint === 'income' || item.hint === 'expense') {
+    if (['income','expense','invest','transfer'].includes(item.hint)) {
       type = item.hint;
+    } else if (item.hint === 'xfer-in' || item.hint === 'xfer-out') {
+      type = 'transfer';  // cross-account — not spending or income
     } else if (item.hint) {
       const h = item.hint.toLowerCase();
       type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
@@ -3041,6 +3075,7 @@ function importCSV() {
   });
 
   saveState();
+  reconcileTransfers();
   $('csv-preview').style.display = 'none';
   $('detect-banner').style.display = 'none';
   const parts = [`${imported} imported`];
@@ -3062,6 +3097,8 @@ function normalizeDate(d) {
 
 function guessCategory(desc) {
   const d = desc.toLowerCase();
+  // Inter-account transfers
+  if (/wealthsimple investments|kurt wealthsimple|e-transfer receive kurt hamlyn/i.test(desc)) return 'Transfer';
   // Wealthsimple activity types
   if (/direct deposit|aft.?in/.test(d))             return 'Salary';
   if (/dividend/.test(d))                            return 'Investment';
@@ -3070,7 +3107,7 @@ function guessCategory(desc) {
   if (/e.?transfer out|e_trfout/.test(d))           return 'Other';
   if (/e.?transfer in|e_trfin/.test(d))             return 'Other';
   if (/bonus|giveaway/.test(d))                     return 'Other';
-  if (/buy:|sell:/.test(d))                         return 'Investment';
+  if (/buy:|sell:|trade/.test(d))                   return 'Investment';
   if (/fee/.test(d))                                return 'Other';
   if (/internal transfer|transfer_tf/.test(d))      return 'Other';
   // General merchant matching
@@ -3454,6 +3491,51 @@ function refreshHoldings() {
 }
 
 // ═══════════════════════════════════
+// CROSS-ACCOUNT TRANSFER RECONCILIATION
+// ═══════════════════════════════════
+// After any import, scan all transactions for matching xfer pairs across
+// accounts (same amount, within 3 days) and mark both sides as 'transfer'
+// so they are invisible to spending/income totals.
+
+function reconcileTransfers() {
+  const txs = state.transactions;
+
+  // Gather all transactions that are either already 'transfer' or could be one
+  // "Could be" = came in as income/expense but description matches known transfer patterns
+  const SIMPLII_WS_OUT = /e-transfer send kurt wealthsimple|wealthsimple investments/i;
+  const SIMPLII_WS_IN  = /e-transfer receive kurt hamlyn/i;
+  const WS_EFT         = /bank transfer|eft/i;
+
+  // Tag by description if not already tagged
+  txs.forEach(t => {
+    if (t.type === 'transfer' || t.type === 'invest') return;
+    const d = t.desc || '';
+    if (SIMPLII_WS_OUT.test(d) || SIMPLII_WS_IN.test(d)) {
+      t.type = 'transfer';
+    }
+  });
+
+  // Now do amount+date matching for anything still marked transfer on one side
+  // Find all transfer-tagged txs and try to match their counterpart
+  const candidates = txs.filter(t => t.type === 'transfer');
+
+  candidates.forEach(a => {
+    // Look for a transaction on the other side: same amount, within 3 days, opposite sign context
+    const aDate = new Date(a.date + 'T12:00:00');
+    const match = txs.find(b => {
+      if (b.id === a.id) return false;
+      if (b.type === 'transfer') return false; // already handled
+      const bDate = new Date(b.date + 'T12:00:00');
+      const dayDiff = Math.abs((aDate - bDate) / 86400000);
+      return Math.abs(b.amount - a.amount) < 0.02 && dayDiff <= 3;
+    });
+    if (match) match.type = 'transfer';
+  });
+
+  saveState();
+}
+
+// ═══════════════════════════════════
 // PERSISTENCE — localStorage
 // ═══════════════════════════════════
 const STORAGE_KEY = 'ledger_v1';
@@ -3485,39 +3567,40 @@ function loadState() {
   return false;
 }
 
-// Wrap mutating functions to auto-save after every change
-const _origAddTx = addTransaction;
-function addTransaction() { _origAddTx(); saveState(); }
+// Auto-save wrappers — patch each mutating function to call saveState() after
+// Uses direct reassignment (not function declarations) to avoid hoisting conflicts
+const _save_addTransaction  = addTransaction;
+addTransaction  = function()      { _save_addTransaction();     saveState(); };
 
-const _origDelTx = deleteTransaction;
-function deleteTransaction(id) { _origDelTx(id); saveState(); }
+const _save_delTransaction  = deleteTransaction;
+deleteTransaction = function(id)  { _save_delTransaction(id);   saveState(); };
 
-const _origAddBudget = addBudget;
-function addBudget() { _origAddBudget(); saveState(); }
+const _save_addBudget       = addBudget;
+addBudget       = function()      { _save_addBudget();          saveState(); };
 
-const _origDelBudget = deleteBudget;
-function deleteBudget(cat) { _origDelBudget(cat); saveState(); }
+const _save_delBudget       = deleteBudget;
+deleteBudget    = function(cat)   { _save_delBudget(cat);       saveState(); };
 
-const _origAddAsset = addAsset;
-function addAsset() { _origAddAsset(); saveState(); }
+const _save_addAsset        = addAsset;
+addAsset        = function()      { _save_addAsset();           saveState(); };
 
-const _origDelAsset = deleteAsset;
-function deleteAsset(id) { _origDelAsset(id); saveState(); }
+const _save_delAsset        = deleteAsset;
+deleteAsset     = function(id)    { _save_delAsset(id);         saveState(); };
 
-const _origAddLiab = addLiability;
-function addLiability() { _origAddLiab(); saveState(); }
+const _save_addLiability    = addLiability;
+addLiability    = function()      { _save_addLiability();       saveState(); };
 
-const _origDelLiab = deleteLiability;
-function deleteLiability(id) { _origDelLiab(id); saveState(); }
+const _save_delLiability    = deleteLiability;
+deleteLiability = function(id)    { _save_delLiability(id);     saveState(); };
 
-const _origAddGoal = addGoal;
-function addGoal() { _origAddGoal(); saveState(); }
+const _save_addGoal         = addGoal;
+addGoal         = function()      { _save_addGoal();            saveState(); };
 
-const _origDelGoal = deleteGoal;
-function deleteGoal(id) { _origDelGoal(id); saveState(); }
+const _save_delGoal         = deleteGoal;
+deleteGoal      = function(id)    { _save_delGoal(id);          saveState(); };
 
-const _origUpdateGoal = updateGoalSaved;
-function updateGoalSaved(id, val) { _origUpdateGoal(id, val); saveState(); }
+const _save_updateGoal      = updateGoalSaved;
+updateGoalSaved = function(id, v) { _save_updateGoal(id, v);   saveState(); };
 
 function clearAllData() {
   if (!confirm('This will permanently delete all your data. Are you sure?')) return;
