@@ -1153,6 +1153,7 @@
       <!-- RECURRING BILLS LIST -->
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
         <div class="section-title" style="margin-bottom:0; flex:1;">Recurring Bills</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openRecurringSuggestionsModal()">⟳ Auto-Detect</button>
       </div>
       <div id="bills-list" class="chart-card" style="padding:0; overflow:hidden; margin-bottom:28px;">
         <div class="empty-state" style="padding:30px;"><div class="empty-icon">🔄</div><div class="empty-text">No recurring bills yet. Add one above.</div></div>
@@ -1781,6 +1782,20 @@
   </div>
 </div>
 
+<!-- Recurring Suggestions Modal -->
+<div class="modal-overlay" id="recurring-suggest-modal">
+  <div class="modal" style="max-width:620px;max-height:80vh;overflow-y:auto;">
+    <div class="modal-title">Detected Recurring Bills</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+      These transactions appear in multiple months at a similar amount. Edit the details if needed, then add or dismiss each one.
+    </div>
+    <div id="recurring-suggest-body"></div>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('recurring-suggest-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Hub Item Modal -->
 <div class="modal-overlay" id="hub-item-modal">
   <div class="modal" style="max-width:480px;">
@@ -2112,6 +2127,8 @@ function renderCalendar() {
   // Build day-keyed maps from actual transactions this month
   const txByDay = {};
   state.transactions.forEach(t => {
+    // Only show real income/expense on calendar — no transfers or bank moves
+    if (t.type !== 'income' && t.type !== 'expense') return;
     const d = new Date(t.date + 'T12:00:00');
     if (d.getMonth() === calMonth && d.getFullYear() === calYear) {
       const day = d.getDate();
@@ -2202,7 +2219,7 @@ function showDayPopover(dateStr, dayNum, evt) {
     .toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   // Transactions on this date
-  const txs = state.transactions.filter(t => t.date === dateStr);
+  const txs = state.transactions.filter(t => t.date === dateStr && (t.type === 'income' || t.type === 'expense'));
   // Bills on this day-of-month
   const bills = (state.bills || []).filter(b => b.day === dayNum);
 
@@ -2318,6 +2335,188 @@ function renderBillsList() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════
+// AUTO-DETECT RECURRING BILLS
+// ═══════════════════════════════════
+
+// Known recurring bill patterns — pre-seeded so Mortgage/NSLSC/Pearlmaid are caught
+const RECURRING_PATTERNS = [
+  { re: /merix|mortgage/i,                   name: 'Mortgage',          category: 'Housing',      type: 'expense', color: '#e85d5d' },
+  { re: /nslsc|student loan/i,               name: 'Student Loan',      category: 'Loan Payment', type: 'expense', color: '#f2a83a' },
+  { re: /pearlmaid|be clean|kara.*clean/i,   name: 'PearlMaid Cleaning',category: 'Home Services',type: 'expense', color: '#3ab5f2' },
+  { re: /nb power|energie nb/i,              name: 'NB Power',          category: 'Utilities',    type: 'expense', color: '#f2a83a' },
+  { re: /rogers|bell internet/i,             name: 'Internet',          category: 'Utilities',    type: 'expense', color: '#3ab5f2' },
+  { re: /netflix/i,                          name: 'Netflix',           category: 'Entertainment',type: 'expense', color: '#e85d5d' },
+  { re: /spotify/i,                          name: 'Spotify',           category: 'Entertainment',type: 'expense', color: '#b5f23a' },
+  { re: /toyota finance|term loan.*toyota/i, name: 'Car Loan',          category: 'Transport',    type: 'expense', color: '#a78bfa' },
+  { re: /sun.?life.*preauth|sunlife.*eft/i,  name: 'Sun Life Insurance',category: 'Healthcare',   type: 'expense', color: '#f2a83a' },
+];
+
+function normDesc(desc) {
+  // Strip dates, amounts, reference numbers — keep the merchant/payee core
+  return (desc || '')
+    .replace(/\d{4,}/g, '')          // strip long numbers
+    .replace(/\$[\d,.]+/g, '')       // strip dollar amounts
+    .replace(/[#*\-_\/\\]/g, ' ')   // strip punctuation
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .slice(0, 40);
+}
+
+function detectRecurringBills() {
+  const expenses = state.transactions.filter(t => t.type === 'expense');
+  if (expenses.length < 4) return [];
+
+  // ── Step 1: Pattern-based detection for known bills ───────────────────
+  const patternSuggestions = [];
+  RECURRING_PATTERNS.forEach(p => {
+    const matches = expenses.filter(t => p.re.test(t.desc));
+    if (matches.length < 2) return;
+
+    // Check it spans at least 2 distinct months
+    const months = new Set(matches.map(t => t.date.slice(0, 7)));
+    if (months.size < 2) return;
+
+    // Already have this bill?
+    const alreadyAdded = (state.bills || []).some(b =>
+      b.name.toLowerCase().includes(p.name.toLowerCase().slice(0, 8))
+    );
+    if (alreadyAdded) return;
+
+    // Median amount and most common day
+    const amounts = matches.map(t => t.amount).sort((a, b) => a - b);
+    const medianAmt = amounts[Math.floor(amounts.length / 2)];
+    const days = matches.map(t => parseInt(t.date.slice(8)));
+    const medianDay = days.sort((a, b) => a - b)[Math.floor(days.length / 2)];
+
+    patternSuggestions.push({
+      name: p.name,
+      amount: Math.round(medianAmt * 100) / 100,
+      day: Math.min(28, Math.max(1, medianDay)),
+      category: p.category,
+      type: p.type,
+      color: p.color,
+      sampleDesc: matches[0].desc,
+      matchCount: months.size,
+    });
+  });
+
+  // ── Step 2: Frequency-based detection for everything else ─────────────
+  const groups = {};
+  expenses.forEach(t => {
+    const key = normDesc(t.desc);
+    if (!key || key.length < 4) return;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  });
+
+  const freqSuggestions = [];
+  Object.entries(groups).forEach(([key, txs]) => {
+    if (txs.length < 2) return;
+    const months = new Set(txs.map(t => t.date.slice(0, 7)));
+    if (months.size < 2) return;
+
+    // Skip if already covered by a pattern suggestion
+    const alreadyCovered = patternSuggestions.some(s =>
+      s.sampleDesc && normDesc(s.sampleDesc).includes(key.slice(0, 8))
+    );
+    if (alreadyCovered) return;
+
+    // Already in bills list?
+    const alreadyAdded = (state.bills || []).some(b =>
+      normDesc(b.name).includes(key.slice(0, 8)) || key.includes(normDesc(b.name).slice(0, 8))
+    );
+    if (alreadyAdded) return;
+
+    const amounts = txs.map(t => t.amount).sort((a, b) => a - b);
+    const medianAmt = amounts[Math.floor(amounts.length / 2)];
+    const days = txs.map(t => parseInt(t.date.slice(8)));
+    const medianDay = days.sort((a, b) => a - b)[Math.floor(days.length / 2)];
+    const variance = Math.max(...amounts) - Math.min(...amounts);
+
+    // Only suggest if amount is reasonably consistent (variance < 30% of median)
+    if (medianAmt > 0 && variance / medianAmt > 0.5) return;
+    // Skip tiny amounts (likely variable small purchases, not bills)
+    if (medianAmt < 15) return;
+
+    freqSuggestions.push({
+      name: titleCase(txs[0].desc.slice(0, 35)),
+      amount: Math.round(medianAmt * 100) / 100,
+      day: Math.min(28, Math.max(1, medianDay)),
+      category: txs[0].category || 'Other',
+      type: 'expense',
+      color: '#f2a83a',
+      sampleDesc: txs[0].desc,
+      matchCount: months.size,
+    });
+  });
+
+  return [...patternSuggestions, ...freqSuggestions].slice(0, 20);
+}
+
+function openRecurringSuggestionsModal() {
+  const suggestions = detectRecurringBills();
+  const modal = $('recurring-suggest-modal');
+  const body  = $('recurring-suggest-body');
+  if (!modal || !body) return;
+
+  if (suggestions.length === 0) {
+    showToast('No new recurring bills detected — you\'re all caught up!');
+    return;
+  }
+
+  body.innerHTML = suggestions.map((s, idx) => `
+    <div class="bill-row" id="rsug-${idx}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px;">
+      <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${s.name}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">
+            ${s.matchCount} months · ~${s.day < 4 ? ['','1st','2nd','3rd'][s.day]||s.day+'th' : s.day+'th'} of month · ${fmt(s.amount)}
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;opacity:0.6;">${s.sampleDesc.slice(0,50)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:12px;">
+          <button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="acceptRecurringSuggestion(${idx})">+ Add</button>
+          <button class="btn btn-ghost"   style="font-size:11px;padding:4px 10px;" onclick="dismissRecurringSuggestion(${idx})">Dismiss</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">
+        <input type="text"   class="form-input" value="${s.name}"     id="rsug-name-${idx}"     style="flex:2;font-size:11px;padding:6px 10px;" placeholder="Name">
+        <input type="number" class="form-input" value="${s.amount}"   id="rsug-amount-${idx}"   style="flex:1;font-size:11px;padding:6px 10px;" placeholder="Amount">
+        <input type="number" class="form-input" value="${s.day}"      id="rsug-day-${idx}"      style="width:60px;font-size:11px;padding:6px 10px;" placeholder="Day" min="1" max="28">
+        <select class="form-select" id="rsug-cat-${idx}" style="flex:1;font-size:11px;">
+          ${CATEGORIES.map(c => `<option ${c===s.category?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('');
+
+  // Store suggestions for accept/dismiss
+  window._rsuggestions = suggestions;
+  openModal('recurring-suggest-modal');
+}
+
+function acceptRecurringSuggestion(idx) {
+  const s = window._rsuggestions[idx];
+  if (!s) return;
+  const name   = ($('rsug-name-'  +idx)||{value:s.name}).value.trim();
+  const amount = parseFloat(($('rsug-amount-'+idx)||{value:s.amount}).value) || s.amount;
+  const day    = parseInt(  ($('rsug-day-'  +idx)||{value:s.day  }).value)   || s.day;
+  const cat    = ($('rsug-cat-'   +idx)||{value:s.category}).value || s.category;
+  if (!state.bills) state.bills = [];
+  state.bills.push({ id: Date.now() + idx, name, amount, day, type: s.type, category: cat, color: s.color });
+  saveState();
+  const row = $('rsug-'+idx);
+  if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; row.querySelector('.btn-primary').textContent = '✓ Added'; }
+  showToast(name + ' added to recurring bills!');
+  renderCalendar();
+}
+
+function dismissRecurringSuggestion(idx) {
+  const row = $('rsug-'+idx);
+  if (row) { row.style.display = 'none'; }
 }
 
 // ═══════════════════════════════════
@@ -3268,6 +3467,16 @@ function importCSV() {
   if (uncatIds.length > 0) {
     setTimeout(() => startCategoryReview(uncatIds), 600);
   }
+
+  // Auto-detect recurring bills after import — prompt if new ones found
+  setTimeout(() => {
+    const suggestions = detectRecurringBills();
+    if (suggestions.length > 0) {
+      if (confirm(suggestions.length + ' potential recurring bill' + (suggestions.length > 1 ? 's' : '') + ' detected. Review them now?')) {
+        openRecurringSuggestionsModal();
+      }
+    }
+  }, 1200);
 }
 
 function normalizeDate(d) {
@@ -3587,13 +3796,15 @@ function refreshNetWorthFromHub() {
   const items = hubItems();
 
   // Build hub assets and liabilities from dynamic items
+  // Hub assets: IDs -200 to -299.  Hub liabilities: IDs -300 to -399.
+  // Holdings: IDs -10 to -99.  Manual user entries: IDs > 0.
   const hubAssets = items
     .filter(i => i.value > 0)
-    .map((i, idx) => ({ id: -(100 + idx), name: i.name, type: hubTypeLabel(i.type), value: i.value }));
+    .map((i, idx) => ({ id: -(200 + idx), name: i.name, type: hubTypeLabel(i.type), value: i.value }));
 
   const hubLiabilities = items
     .filter(i => i.debt > 0)
-    .map((i, idx) => ({ id: -(200 + idx), name: i.type === 'creditcard' ? i.name + ' (CC)' : i.name + ' loan/balance', type: hubDebtTypeLabel(i.type), value: i.debt }));
+    .map((i, idx) => ({ id: -(300 + idx), name: i.type === 'creditcard' ? i.name : i.name, type: hubDebtTypeLabel(i.type), value: i.debt }));
 
   // Summary totals for hub panel
   const totalAssets = hubAssets.reduce((s, a) => s + a.value, 0);
@@ -3611,11 +3822,10 @@ function refreshNetWorthFromHub() {
     ne.style.fontSize = '22px';
   }
 
-  // Sync into Net Worth — replace all hub-managed entries (negative IDs ≤ -100)
-  state.assets      = state.assets.filter(a => a.id > 0 || (a.id > -100 && a.id < -9)).concat(hubAssets);
-  state.liabilities = state.liabilities.filter(l => l.id > 0 || (l.id > -100 && l.id < -9)).concat(hubLiabilities);
-  // Also clean up old holdings-synced assets that may conflict (ids -10 to -99)
-  // holdings uses -10 to -99; hub now uses -100 and below — no conflict
+  // Purge old hub entries (any negative ID outside holdings range -10..-99),
+  // then append fresh ones. This covers old -100..-199 IDs from previous builds.
+  state.assets      = state.assets.filter(a => a.id > 0 || (a.id >= -99 && a.id <= -10)).concat(hubAssets);
+  state.liabilities = state.liabilities.filter(l => l.id > 0).concat(hubLiabilities);
 }
 
 function hubTypeLabel(type) {
@@ -3720,10 +3930,8 @@ function syncHoldingsToNetWorth() {
     accounts[h.account].value += h.marketValue;
   });
 
-  // Remove old holdings-synced assets (IDs -10 to -99)
-  state.assets = state.assets.filter(a => a.id > 0 || (a.id < -9 ? false : true));
-  // Actually: remove any with id <= -10
-  state.assets = state.assets.filter(a => a.id > -10);
+  // Remove old holdings-synced assets (IDs -10 to -99 only — never touch hub or manual entries)
+  state.assets = state.assets.filter(a => !(a.id <= -10 && a.id >= -99));
 
   Object.values(accounts).forEach((acc, i) => {
     state.assets.push({ id: -(10 + i), name: acc.name + ' (' + acc.type + ')', type: 'Investment', value: Math.round(acc.value * 100) / 100 });
