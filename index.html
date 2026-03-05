@@ -615,7 +615,9 @@
   .drop-label span { color: var(--accent); }
 
   /* TOAST */
-  .toast {
+  .ctx-item:hover { background: var(--surface2); }
+.ctx-item.active-cat { color: var(--accent); font-weight: 600; }
+.toast {
     position: fixed;
     bottom: 24px;
     right: 24px;
@@ -1061,6 +1063,9 @@
       <div class="nav-item" onclick="switchView('trips')">
         <span class="nav-icon">✈</span> Trips
       </div>
+      <div class="nav-item" onclick="switchView('settings')">
+        <span class="nav-icon">⚙</span> Settings
+      </div>
     </nav>
     <div class="sidebar-footer">
       100% private · local only
@@ -1201,7 +1206,7 @@
         <div class="tab active" onclick="filterTx('all', this)">All</div>
         <div class="tab" onclick="filterTx('income', this)">Income</div>
         <div class="tab" onclick="filterTx('expense', this)">Expenses</div>
-        <div class="tab" onclick="filterTx('invest', this)">Investing</div>
+        <!-- invest trades excluded from transactions — visible in Holdings tab -->
       </div>
 
       <!-- Sort + search controls -->
@@ -1516,6 +1521,28 @@
         </div>
       </div>
 
+      <!-- Trade Activity section -->
+      <div style="margin-top:32px;">
+        <div class="section-title">Trade Activity</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:12px;">Buy/sell transactions imported from your brokerage — excluded from spending and income totals.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <select class="form-select" id="trade-sort" style="width:auto;font-size:12px;" onchange="refreshTradeActivity()">
+            <option value="date-desc">Date ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="amount-desc">Amount ↓</option>
+          </select>
+          <select class="form-select" id="trade-filter-acct" style="width:auto;font-size:12px;" onchange="refreshTradeActivity()">
+            <option value="">All Accounts</option>
+          </select>
+        </div>
+        <div class="chart-card" style="padding:0;overflow:hidden;">
+          <table class="tx-table">
+            <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Account</th></tr></thead>
+            <tbody id="trade-activity-body"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- ═══════════ TRANSFERS ═══════════ -->
@@ -1621,6 +1648,39 @@
           <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Account</th><th></th></tr></thead>
           <tbody id="bank-xfer-body"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ═══════════ SETTINGS ═══════════ -->
+    <div id="view-settings" class="view">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+      </div>
+
+      <!-- ── Categories ──────────────────────────────────────── -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title" style="margin-bottom:16px;">Transaction Categories</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+          These categories appear in transaction lists, the review modal, and budget tracking. Default categories cannot be removed, but you can add your own.
+        </div>
+
+        <!-- Default categories (read-only pills) -->
+        <div style="margin-bottom:16px;">
+          <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Default Categories</div>
+          <div id="default-cat-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+
+        <!-- Custom categories (deletable) -->
+        <div style="margin-bottom:16px;" id="custom-cat-section">
+          <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Custom Categories</div>
+          <div id="custom-cat-pills" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;"></div>
+        </div>
+
+        <!-- Add new category -->
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+          <input type="text" class="form-input" id="new-cat-input" placeholder="New category name…" style="flex:1;max-width:280px;font-size:13px;" onkeydown="if(event.key==='Enter') addCustomCategory()">
+          <button class="btn btn-primary" onclick="addCustomCategory()">+ Add Category</button>
+        </div>
       </div>
     </div>
 
@@ -2020,6 +2080,32 @@
   </div>
 </div>
 
+<!-- Contact Detail Modal -->
+<div class="modal-overlay" id="contact-detail-modal">
+  <div class="modal" style="max-width:580px;max-height:80vh;overflow-y:auto;">
+    <div class="modal-title" id="contact-detail-name"></div>
+    <div id="contact-detail-stats" style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;"></div>
+    <div class="chart-card" style="padding:0;overflow:hidden;">
+      <table class="tx-table">
+        <thead><tr><th>Date</th><th>Description</th><th>Direction</th><th>Amount</th><th>Account</th></tr></thead>
+        <tbody id="contact-detail-body"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('contact-detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu" style="display:none;position:fixed;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);min-width:200px;overflow:hidden;">
+  <div id="ctx-menu-header" style="padding:10px 14px 6px;font-family:var(--mono);font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;"></div>
+  <div id="ctx-cat-list" style="max-height:280px;overflow-y:auto;padding:4px 0;"></div>
+  <div style="border-top:1px solid var(--border);padding:4px 0;">
+    <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">✓ <span id="toast-msg"></span></div>
 
@@ -2037,7 +2123,8 @@ let state = {
   bills: [],
   holdings: [],  // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
   trips: [],
-  vendorRules: {},  // normDesc(vendor) → category, persisted for future imports
+  vendorRules: {},
+  customCategories: [],  // normDesc(vendor) → category, persisted for future imports
 };
 
 let txFilter = 'all';
@@ -2080,7 +2167,8 @@ function switchView(view) {
   if (view === 'savings') refreshGoals();
   if (view === 'transactions') { refreshTransactions(); updateReviewButton(); }
   if (view === 'hub') { ensureHubItems(); renderHubGrids(); refreshNetWorthFromHub(); }
-  if (view === 'holdings') refreshHoldings();
+  if (view === 'holdings') { refreshHoldings(); setTimeout(refreshTradeActivity, 100); }
+  if (view === 'settings') refreshSettings();
   if (view === 'transfers') refreshTransfers();
   if (view === 'account-activity') refreshAccountActivity();
   if (view === 'trips') refreshTrips();
@@ -2115,6 +2203,144 @@ function deleteTransaction(id) {
   state.transactions = state.transactions.filter(t => t.id !== id);
   refreshTransactions();
   refreshDashboard();
+}
+
+// ─── Right-click context menu ────────────────────────────────────────────────
+let ctxTxId = null;
+
+function openCtxMenu(e, txId) {
+  e.preventDefault();
+  ctxTxId = txId;
+  const t = state.transactions.find(x => x.id === txId);
+  if (!t) return;
+
+  const menu = $('ctx-menu');
+  const header = $('ctx-menu-header');
+  const catList = $('ctx-cat-list');
+
+  header.textContent = t.desc.slice(0,45) + (t.desc.length>45?'…':'') + '  ·  ' + fmt(t.amount);
+
+  // Find similar count for context
+  const key = normDesc(t.desc);
+  const similar = state.transactions.filter(x => x.id !== txId && normDesc(x.desc) === key);
+
+  catList.innerHTML = getCategoryList().map(c => `
+    <div class="ctx-item${c === t.category?' active-cat':''}"
+         onclick="ctxSetCategory('${c.replace(/'/g,"\'")}', false)"
+         style="padding:7px 14px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:space-between;">
+      <span>${c}</span>
+      ${c === t.category ? '<span style="font-size:10px;opacity:0.6;">✓ current</span>' : ''}
+    </div>`).join('') +
+    (similar.length > 0 ? `<div style="border-top:1px solid var(--border);padding:6px 14px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Apply to all ${similar.length+1} from this vendor</div>` +
+      getCategoryList().map(c => `
+        <div class="ctx-item${c === t.category?' active-cat':''}"
+             onclick="ctxSetCategory('${c.replace(/'/g,"\'")}', true)"
+             style="padding:7px 14px 7px 22px;cursor:pointer;font-size:12px;color:var(--accent3);">
+          ↳ "${c}" for all
+        </div>`).join('') : '');
+
+  // Show trip item only if trips exist
+  const tripItem = $('ctx-trip-item');
+  if (tripItem) tripItem.style.display = (state.trips && state.trips.length > 0) ? 'flex' : 'none';
+
+  // Position
+  const x = Math.min(e.clientX, window.innerWidth - 280);
+  const y = Math.min(e.clientY, window.innerHeight - 400);
+  menu.style.left = x + 'px';
+  menu.style.top  = y + 'px';
+  menu.style.display = 'block';
+}
+
+function ctxSetCategory(cat, applyAll) {
+  closeCtxMenu();
+  const t = state.transactions.find(x => x.id === ctxTxId);
+  if (!t) return;
+  const key = normDesc(t.desc);
+  t.category = cat;
+  if (!state.vendorRules) state.vendorRules = {};
+  state.vendorRules[key] = cat;
+  if (applyAll) {
+    let count = 0;
+    state.transactions.forEach(x => { if (x.id !== ctxTxId && normDesc(x.desc) === key) { x.category = cat; count++; } });
+    showToast('"' + cat + '" applied to ' + (count+1) + ' transactions · rule saved.');
+  } else {
+    showToast('"' + cat + '" saved · rule remembered for future imports.');
+  }
+  saveState();
+  refreshTransactions();
+  refreshDashboard();
+  updateReviewButton();
+}
+
+function ctxAddToTrip() {
+  closeCtxMenu();
+  const t = state.transactions.find(x => x.id === ctxTxId);
+  if (!t || !state.trips || !state.trips.length) return;
+  // Build trip picker modal inline
+  const tripOpts = state.trips.map(tr =>
+    `<option value="${tr.id}">${tr.name} (${tr.start}→${tr.end})</option>`
+  ).join('');
+  const tripList = state.trips.map((tr,i) => (i+1) + '. ' + tr.name + ' (' + tr.start + ')').join('\n');
+  const choice = prompt('Add "' + t.desc.slice(0,40) + '" to which trip?\n\n' + tripList + '\n\nEnter the trip number:');
+  if (!choice) return;
+  const idx = parseInt(choice) - 1;
+  const trip = state.trips[idx];
+  if (!trip) { showToast('Invalid selection.'); return; }
+  if (!trip.extraTxIds) trip.extraTxIds = [];
+  if (!trip.extraTxIds.includes(t.id)) trip.extraTxIds.push(t.id);
+  saveState();
+  showToast('"' + t.desc.slice(0,30) + '" added to ' + trip.name);
+}
+
+function closeCtxMenu() {
+  const m = $('ctx-menu');
+  if (m) m.style.display = 'none';
+  ctxTxId = null;
+}
+
+// Close on any click/escape outside
+document.addEventListener('click', e => {
+  const m = $('ctx-menu');
+  if (m && m.style.display === 'block' && !m.contains(e.target)) closeCtxMenu();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtxMenu(); });
+
+// ─── Trade Activity (Holdings tab) ───────────────────────────────────────────
+function refreshTradeActivity() {
+  const trades = state.transactions.filter(t => t.type === 'invest');
+  const sort   = ($('trade-sort')        || {value:'date-desc'}).value;
+  const acctF  = ($('trade-filter-acct') || {value:''}).value;
+
+  // Populate account filter
+  const acctSel = $('trade-filter-acct');
+  if (acctSel) {
+    const accts = [...new Set(trades.map(t => (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple')))].sort();
+    const prev = acctSel.value;
+    acctSel.innerHTML = '<option value="">All Accounts</option>' + accts.map(a=>`<option value="${a}" ${a===prev?'selected':''}>${a}</option>`).join('');
+  }
+
+  let rows = acctF ? trades.filter(t => (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple') === acctF) : trades;
+  if (sort === 'date-desc')   rows = [...rows].sort((a,b) => b.date.localeCompare(a.date));
+  if (sort === 'date-asc')    rows = [...rows].sort((a,b) => a.date.localeCompare(b.date));
+  if (sort === 'amount-desc') rows = [...rows].sort((a,b) => b.amount - a.amount);
+
+  const body = $('trade-activity-body');
+  if (!body) return;
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state" style="padding:24px;"><div class="empty-text">No trade activity found. Import your Wealthsimple Activities CSV to see buy/sell transactions here.</div></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(t => {
+    const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple');
+    const isBuy = t.amount < 0 || t.desc.toLowerCase().includes('buy');
+    return `<tr>
+      <td><span class="highlight-val">${t.date}</span></td>
+      <td style="font-size:12px;">${t.desc}</td>
+      <td><span class="category-pill">${t.category||'Investment'}</span></td>
+      <td class="tx-amount invest" style="font-family:var(--mono);">↓ ${fmt(t.amount)}</td>
+      <td>${acct?`<span class="account-pill">${acct}</span>`:''}</td>
+    </tr>`;
+  }).join('');
 }
 
 function quickCatEdit(id, pillEl) {
@@ -2212,9 +2438,10 @@ function populateTxFilters() {
 function refreshTransactions() {
   populateTxFilters();
 
-  // Exclude transfer types from main list
+  // Exclude transfers, bank-transfers, and invest trades from main list
+  // (invest trades live in Holdings tab)
   let filtered = state.transactions.filter(t =>
-    t.type !== 'transfer' && t.type !== 'bank-transfer' &&
+    t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest' &&
     (txFilter === 'all' || t.type === txFilter)
   );
 
@@ -2256,7 +2483,7 @@ function refreshTransactions() {
   }
   body.innerHTML = filtered.map(t => {
     const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
-    return `<tr>
+    return `<tr oncontextmenu="openCtxMenu(event,${t.id})" style="cursor:context-menu;">
       <td><span class="highlight-val">${t.date}</span></td>
       <td>
         <div style="font-size:13px;">${t.desc}</div>
@@ -2265,8 +2492,8 @@ function refreshTransactions() {
       <td>
         <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
       </td>
-      <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':'var(--red)'}">${t.type}</td>
-      <td class="tx-amount ${t.type==='invest'?'invest':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':'+'}${fmt(t.amount)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
+      <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
       <td>${acct ? `<span class="account-pill">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>`;
@@ -3257,7 +3484,7 @@ const BANK_PROFILES = [
             hint = amt >= 0 ? 'income' : 'expense';
           }
         } else if (actType === 'Trade') {
-          hint = amt >= 0 ? 'income' : 'invest'; // SELL = income, BUY = invest (not expense)
+          hint = 'invest'; // ALL trades (buy and sell) → invest type, invisible to spending/calendar
         } else if (actType === 'Fee') {
           hint = 'expense';
         } else {
@@ -3935,7 +4162,8 @@ function importCSV() {
 
   // Surface Unknown-category transactions for manual review
   const uncatIds = state.transactions
-    .filter(t => t.category === 'Unknown' && (t.type === 'expense' || t.type === 'income'))
+    .filter(t => t.category === 'Unknown' && (t.type === 'expense' || t.type === 'income')
+               && t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest')
     .map(t => t.id);
   if (uncatIds.length > 0) {
     setTimeout(() => startCategoryReview(uncatIds), 600);
@@ -4650,13 +4878,14 @@ function refreshTransfers() {
       cc.innerHTML = `<div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfer contacts yet. Import Simplii transactions — sends and receives to other people will appear here.</div></div>`;
     } else {
       cc.innerHTML = contactRows.map(([name, d]) => `
-        <div class="bill-row" style="gap:12px;">
+        <div class="bill-row" style="gap:12px;cursor:pointer;" onclick="openContactDetail('${name.replace(/'/g,"\\'")}')" title="Click to see all transactions">
           <div style="flex:1;">
             <div style="font-size:13px;font-weight:500;">${name}</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d.count} transaction${d.count!==1?'s':''}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d.count} transaction${d.count!==1?'s':''} · click to view</div>
           </div>
           ${d.in  > 0 ? `<div style="font-family:var(--mono);font-size:12px;color:var(--accent);">↙ ${fmt(d.in)}</div>` : ''}
           ${d.out > 0 ? `<div style="font-family:var(--mono);font-size:12px;color:var(--red);">↗ ${fmt(d.out)}</div>` : ''}
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">›</span>
         </div>`).join('');
     }
   }
@@ -4805,13 +5034,6 @@ function refreshTrips() {
     const allTripTx = [...new Map([...inRange,...extras].map(t=>[t.id,t])).values()];
     const total = allTripTx.reduce((s,t) => s + t.amount, 0);
 
-    // Transactions NOT in range for manual-add picker
-    const notInTrip = state.transactions.filter(t =>
-      (t.type === 'expense' || t.type === 'invest') &&
-      !(t.date >= trip.start && t.date <= trip.end) &&
-      !(trip.extraTxIds||[]).includes(t.id)
-    ).slice(0,50); // limit picker
-
     const mapUrl = trip.location
       ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(trip.location)}&zoom=7&size=600x200&maptype=roadmap&style=element:geometry|color:0x1b1f1b&style=element:labels.text.fill|color:0xb5f23a&key=`
       : null;
@@ -4853,15 +5075,10 @@ function refreshTrips() {
         </table>` : `<div class="empty-state" style="padding:20px;"><div class="empty-text">No expenses found in this date range.</div></div>`}
       </div>
 
-      <div style="margin-top:12px;">
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
-          + Attach pre-trip expense (flight, hotel, etc.)
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(181,242,58,0.04);border:1px solid rgba(181,242,58,0.12);border-radius:8px;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">
+          💡 To attach a pre-trip expense (flight, hotel, etc.) — go to Transactions, right-click any transaction, and choose <strong style="color:var(--accent);">✈ Add to Trip</strong>.
         </div>
-        <select class="form-select" id="trip-extra-${trip.id}" style="font-size:11px;width:100%;max-width:400px;">
-          <option value="">Select a transaction to attach…</option>
-          ${notInTrip.map(t=>`<option value="${t.id}">${t.date} — ${t.desc.slice(0,40)} — ${fmt(t.amount)}</option>`).join('')}
-        </select>
-        <button class="btn btn-ghost" style="margin-top:8px;font-size:11px;" onclick="attachTripExtra(${trip.id})">Attach</button>
       </div>
     </div>`;
   }).join('');
@@ -4874,19 +5091,80 @@ function attachTripExtra(tripId) {
 }
 
 // ═══════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════
+
+function refreshSettings() {
+  const defaultPills = $('default-cat-pills');
+  const customPills  = $('custom-cat-pills');
+  if (!defaultPills || !customPills) return;
+
+  defaultPills.innerHTML = DEFAULT_CATEGORIES.map(c =>
+    `<span class="category-pill" style="opacity:0.7;">${c}</span>`
+  ).join('');
+
+  const custom = state.customCategories || [];
+  if (custom.length === 0) {
+    customPills.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);">No custom categories yet.</span>`;
+  } else {
+    customPills.innerHTML = custom.map(c =>
+      `<span class="category-pill" style="cursor:pointer;" title="Click to remove">
+        ${c} <span onclick="removeCustomCategory('${c.replace(/'/g,"\'")}')
+          " style="margin-left:4px;opacity:0.6;font-size:10px;">✕</span>
+       </span>`
+    ).join('');
+  }
+}
+
+function addCustomCategory() {
+  const input = $('new-cat-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) { showToast('Enter a category name.'); return; }
+  if (getCategoryList().some(c => c.toLowerCase() === name.toLowerCase())) {
+    showToast('"' + name + '" already exists.'); return;
+  }
+  if (!state.customCategories) state.customCategories = [];
+  state.customCategories.push(name);
+  saveState();
+  input.value = '';
+  refreshSettings();
+  showToast('Category "' + name + '" added!');
+}
+
+function removeCustomCategory(name) {
+  if (!confirm('Remove category "' + name + '"? Transactions already using it will keep the label.')) return;
+  state.customCategories = (state.customCategories || []).filter(c => c !== name);
+  saveState();
+  refreshSettings();
+  showToast('Category "' + name + '" removed.');
+}
+
+// ═══════════════════════════════════
 // CATEGORY REVIEW MODAL
 // ═══════════════════════════════════
 
 let reviewQueue = [];
 let reviewIdx   = 0;
 
-const CATEGORIES = ['Food & Dining','Housing','Transport','Healthcare','Entertainment',
+const DEFAULT_CATEGORIES = ['Food & Dining','Housing','Transport','Healthcare','Entertainment',
   'Shopping','Utilities','Salary','Investment','Travel','Loan Payment','Home Services',
   'Cash','Transfer','Credit Card Payment','Income','Other','Unknown'];
 
+// Dynamic category list — merges defaults with any user-added categories
+function getCategoryList() {
+  const custom = (state.customCategories || []);
+  const all = [...DEFAULT_CATEGORIES];
+  custom.forEach(c => { if (!all.includes(c)) all.push(c); });
+  return all;
+}
+// Keep CATEGORIES as a live alias for backward compat (used in many places)
+Object.defineProperty(window, 'CATEGORIES', { get: getCategoryList, configurable: true });
+
 function reviewUnknown() {
   const ids = state.transactions
-    .filter(t => t.category === 'Unknown' || t.category === 'Other')
+    .filter(t => (t.category === 'Unknown' || t.category === 'Other')
+               && t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest')
     .map(t => t.id);
   if (ids.length === 0) { showToast('No unknown transactions to review!'); return; }
   startCategoryReview(ids);
@@ -4895,7 +5173,7 @@ function reviewUnknown() {
 function updateReviewButton() {
   const btn = $('review-btn');
   if (!btn) return;
-  const count = state.transactions.filter(t => t.category === 'Unknown').length;
+  const count = state.transactions.filter(t => t.category === 'Unknown' && t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest').length;
   if (count > 0) {
     btn.style.display = 'flex';
     btn.textContent = '⚑ Review Unknown (' + count + ')';
@@ -5190,6 +5468,20 @@ function guessAccountFromDesc(desc) {
 
 function migrateExistingData() {
   let changed = 0;
+
+  // ── Step 0a: Fix old WS sell transactions typed as 'income' ─────────────
+  // WS sells were previously tagged as income — they should be invest
+  state.transactions.forEach(t => {
+    if (t.type === 'income' && /^(buy|sell):/i.test(t.desc || '')) {
+      t.type = 'invest';
+      changed++;
+    }
+    if (t.type === 'income' && t.category === 'Investment' &&
+        /wealthsimple|rrsp|tfsa|trade|sell|buy/i.test(t.account || '')) {
+      t.type = 'invest';
+      changed++;
+    }
+  });
 
   // Patterns for own inter-bank moves — must become 'bank-transfer'
   const OWN_BANK    = /e-transfer send kurt wealthsimple|wealthsimple investments inc?|e-transfer receive kurt hamlyn|investment wealthsimple/i;
