@@ -1053,7 +1053,10 @@
         <span class="nav-icon">◭</span> Holdings
       </div>
       <div class="nav-item" onclick="switchView('transfers')">
-        <span class="nav-icon">⇄</span> Transfers
+        <span class="nav-icon">⇄</span> E-Transfers
+      </div>
+      <div class="nav-item" onclick="switchView('account-activity')">
+        <span class="nav-icon">⟳</span> Account Activity
       </div>
       <div class="nav-item" onclick="switchView('trips')">
         <span class="nav-icon">✈</span> Trips
@@ -1541,13 +1544,42 @@
         </table>
       </div>
 
-      <!-- Bank Transfers section -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:32px 0 12px;flex-wrap:wrap;gap:8px;">
+    </div>
+
+    <!-- ═══════════ ACCOUNT ACTIVITY ═══════════ -->
+    <div id="view-account-activity" class="view">
+      <div class="page-header">
+        <div class="page-title">Account Activity</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Bank transfers and credit card payments — excluded from income, spending, and net worth calculations.</div>
+      </div>
+
+      <!-- Credit Card Payments -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div class="section-title" style="margin-bottom:2px;">Credit Card Payments</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Payments made to credit card balances. Not counted as expenses.</div>
+        </div>
+        <select class="form-select" id="cc-pay-sort" style="width:auto;font-size:12px;" onchange="refreshAccountActivity()">
+          <option value="date-desc">Date ↓</option>
+          <option value="date-asc">Date ↑</option>
+          <option value="amount-desc">Amount ↓</option>
+          <option value="amount-asc">Amount ↑</option>
+        </select>
+      </div>
+      <div class="chart-card" style="padding:0;overflow:hidden;margin-bottom:32px;">
+        <table class="tx-table">
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Account</th><th></th></tr></thead>
+          <tbody id="cc-pay-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Bank Transfers -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
         <div>
           <div class="section-title" style="margin-bottom:2px;">Bank Transfers</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Your own money moved between Simplii and Wealthsimple. Not counted as income or expenses.</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Money moved between your own accounts (Simplii ↔ Wealthsimple). Not counted as income or expenses.</div>
         </div>
-        <select class="form-select" id="bank-xfer-sort" style="width:auto;font-size:12px;" onchange="refreshBankTransfers()">
+        <select class="form-select" id="bank-xfer-sort" style="width:auto;font-size:12px;" onchange="refreshAccountActivity()">
           <option value="date-desc">Date ↓</option>
           <option value="date-asc">Date ↑</option>
           <option value="amount-desc">Amount ↓</option>
@@ -1556,9 +1588,7 @@
       </div>
       <div class="chart-card" style="padding:0;overflow:hidden;">
         <table class="tx-table">
-          <thead><tr>
-            <th>Date</th><th>Description</th><th>Amount</th><th>Account</th><th></th>
-          </tr></thead>
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Account</th><th></th></tr></thead>
           <tbody id="bank-xfer-body"></tbody>
         </table>
       </div>
@@ -1896,13 +1926,22 @@
         <input type="text" class="form-input" id="bill-name" placeholder="e.g. Netflix, Hydro, Car Insurance">
       </div>
     </div>
-    <div class="form-row cols-3">
+    <div class="form-row cols-2">
       <div class="form-group">
         <label class="form-label">Amount ($)</label>
         <input type="number" class="form-input" id="bill-amount" placeholder="0.00" step="0.01" min="0">
       </div>
       <div class="form-group">
-        <label class="form-label">Day of Month</label>
+        <label class="form-label">Frequency</label>
+        <select class="form-select" id="bill-frequency" onchange="toggleBillDayLabel()">
+          <option value="monthly">Monthly</option>
+          <option value="biweekly">Bi-weekly (every 2 weeks)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label" id="bill-day-label">Day of Month (1–28)</label>
         <input type="number" class="form-input" id="bill-day" placeholder="1–28" min="1" max="28">
       </div>
       <div class="form-group">
@@ -1941,8 +1980,8 @@
         </select>
       </div>
     </div>
-    <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:-4px; margin-bottom:12px;">
-      Day capped at 28 to work across all months. Future occurrences show on the calendar.
+    <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:-4px; margin-bottom:12px;" id="bill-day-hint">
+      Monthly: day of month (capped at 28). Bi-weekly: anchor date — the bill repeats every 14 days from that date.
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('bill-modal')">Cancel</button>
@@ -2011,7 +2050,8 @@ function switchView(view) {
   if (view === 'transactions') { refreshTransactions(); updateReviewButton(); }
   if (view === 'hub') { ensureHubItems(); renderHubGrids(); refreshNetWorthFromHub(); }
   if (view === 'holdings') refreshHoldings();
-  if (view === 'transfers') { refreshTransfers(); refreshBankTransfers(); }
+  if (view === 'transfers') refreshTransfers();
+  if (view === 'account-activity') refreshAccountActivity();
   if (view === 'trips') refreshTrips();
 }
 
@@ -2179,12 +2219,56 @@ function renderCalendar() {
       if (d.expense > 0) txHTML += `<div class="cal-expense-bar">-${fmtShort(d.expense)}</div>`;
     }
 
-    // Bill dots
+    // Bill dots — monthly shows on b.day; biweekly computed from anchor
     let billsHTML = '';
-    const dayBills = bills.filter(b => b.day === dayNum);
-    if (dayBills.length > 0) {
+    const dayBills = bills.filter(b => {
+      if (b.frequency === 'biweekly') {
+        // Find the nearest anchor date for this year/month and check if it lands on dayNum
+        // Anchor: the bill's day in some reference month; we iterate forward from Jan of calYear
+        const anchor = new Date(calYear, 0, b.day);
+        // Find first occurrence on or after Jan 1 of calYear
+        let occ = new Date(anchor);
+        // Step forward in 14-day increments until we reach or pass this month
+        while (occ.getFullYear() < calYear || (occ.getFullYear() === calYear && occ.getMonth() < calMonth)) {
+          occ.setDate(occ.getDate() + 14);
+        }
+        // Check all occurrences within this calendar month
+        let found = false;
+        let check = new Date(occ);
+        // Also go backwards in case anchor is after this month
+        while (check.getFullYear() === calYear && check.getMonth() === calMonth) {
+          if (check.getDate() === dayNum) { found = true; break; }
+          check.setDate(check.getDate() + 14);
+        }
+        // Also scan a few earlier
+        check = new Date(occ);
+        check.setDate(check.getDate() - 14);
+        while (check.getFullYear() === calYear && check.getMonth() === calMonth) {
+          if (check.getDate() === dayNum) { found = true; break; }
+          check.setDate(check.getDate() - 14);
+        }
+        return found;
+      } else {
+        return b.day === dayNum;
+      }
+    });
+
+    // For past days: only show bill dot if there is NO matching real transaction already on this date
+    // (the transaction bar already shows the actual spend). For future days always show.
+    const filteredDayBills = dayBills.filter(b => {
+      if (!isPast) return true; // always show future/today bill dots
+      // If a real transaction matching this bill's name exists on this date, suppress the dot
+      const txOnDay = (txByDay[dayNum] || {items:[]}).items;
+      const alreadyShown = txOnDay.some(t =>
+        normDesc(t.desc).includes(normDesc(b.name).slice(0,6)) ||
+        normDesc(b.name).includes(normDesc(t.desc).slice(0,6))
+      );
+      return !alreadyShown;
+    });
+
+    if (filteredDayBills.length > 0) {
       billsHTML = '<div class="cal-bills-row">';
-      dayBills.forEach(b => {
+      filteredDayBills.forEach(b => {
         const dotColor = isFuture ? '#3ab5f2' : (b.color || '#f2a83a');
         const opacity  = isFuture ? '0.8' : '1';
         billsHTML += `<div class="cal-bill-tag" style="background:${dotColor}22; opacity:${opacity}; color:${dotColor}; max-width:100%;">
@@ -2278,13 +2362,20 @@ document.addEventListener('click', e => {
 });
 
 // ── RECURRING BILLS CRUD ─────────────────────────────────────────────────
+function toggleBillDayLabel() {
+  const freq = ($('bill-frequency') || {value:'monthly'}).value;
+  const lbl  = $('bill-day-label');
+  if (lbl) lbl.textContent = freq === 'biweekly' ? 'Anchor Day of Month' : 'Day of Month (1–28)';
+}
+
 function addBill() {
-  const name     = $('bill-name').value.trim();
-  const amount   = parseFloat($('bill-amount').value);
-  const day      = parseInt($('bill-day').value);
-  const type     = $('bill-type').value;
-  const category = $('bill-category').value;
-  const color    = $('bill-color').value;
+  const name      = $('bill-name').value.trim();
+  const amount    = parseFloat($('bill-amount').value);
+  const day       = parseInt($('bill-day').value);
+  const type      = $('bill-type').value;
+  const category  = $('bill-category').value;
+  const color     = $('bill-color').value;
+  const frequency = ($('bill-frequency') || {value:'monthly'}).value;
 
   if (!name || isNaN(amount) || amount <= 0 || isNaN(day) || day < 1 || day > 28) {
     showToast('Please fill in all fields. Day must be 1–28.');
@@ -2292,7 +2383,7 @@ function addBill() {
   }
 
   if (!state.bills) state.bills = [];
-  state.bills.push({ id: Date.now(), name, amount, day, type, category, color });
+  state.bills.push({ id: Date.now(), name, amount, day, type, category, color, frequency });
   saveState();
   closeModal('bill-modal');
   $('bill-name').value = ''; $('bill-amount').value = ''; $('bill-day').value = '';
@@ -2326,7 +2417,7 @@ function renderBillsList() {
         <div class="bill-dot-large" style="background:${b.color||'#f2a83a'};"></div>
         <div>
           <div class="bill-name">${b.name}</div>
-          <div class="bill-meta">${b.category} · ${nthStr} of each month</div>
+          <div class="bill-meta">${b.category} · ${b.frequency === 'biweekly' ? 'every 2 weeks (anchor ' + nthStr + ')' : nthStr + ' of each month'}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:14px;">
@@ -2343,15 +2434,15 @@ function renderBillsList() {
 
 // Known recurring bill patterns — pre-seeded so Mortgage/NSLSC/Pearlmaid are caught
 const RECURRING_PATTERNS = [
-  { re: /merix|mortgage/i,                   name: 'Mortgage',          category: 'Housing',      type: 'expense', color: '#e85d5d' },
-  { re: /nslsc|student loan/i,               name: 'Student Loan',      category: 'Loan Payment', type: 'expense', color: '#f2a83a' },
-  { re: /pearlmaid|be clean|kara.*clean/i,   name: 'PearlMaid Cleaning',category: 'Home Services',type: 'expense', color: '#3ab5f2' },
-  { re: /nb power|energie nb/i,              name: 'NB Power',          category: 'Utilities',    type: 'expense', color: '#f2a83a' },
-  { re: /rogers|bell internet/i,             name: 'Internet',          category: 'Utilities',    type: 'expense', color: '#3ab5f2' },
-  { re: /netflix/i,                          name: 'Netflix',           category: 'Entertainment',type: 'expense', color: '#e85d5d' },
-  { re: /spotify/i,                          name: 'Spotify',           category: 'Entertainment',type: 'expense', color: '#b5f23a' },
-  { re: /toyota finance|term loan.*toyota/i, name: 'Car Loan',          category: 'Transport',    type: 'expense', color: '#a78bfa' },
-  { re: /sun.?life.*preauth|sunlife.*eft/i,  name: 'Sun Life Insurance',category: 'Healthcare',   type: 'expense', color: '#f2a83a' },
+  { re: /merix|mortgage/i,                   name: 'Mortgage',          category: 'Housing',      type: 'expense', color: '#e85d5d', frequency: 'biweekly' },
+  { re: /nslsc|student loan/i,               name: 'Student Loan',      category: 'Loan Payment', type: 'expense', color: '#f2a83a', frequency: 'biweekly' },
+  { re: /pearlmaid|be clean|kara.*clean/i,   name: 'PearlMaid Cleaning',category: 'Home Services',type: 'expense', color: '#3ab5f2', frequency: 'biweekly' },
+  { re: /nb power|energie nb/i,              name: 'NB Power',          category: 'Utilities',    type: 'expense', color: '#f2a83a', frequency: 'monthly'  },
+  { re: /rogers|bell internet/i,             name: 'Internet',          category: 'Utilities',    type: 'expense', color: '#3ab5f2', frequency: 'monthly'  },
+  { re: /netflix/i,                          name: 'Netflix',           category: 'Entertainment',type: 'expense', color: '#e85d5d', frequency: 'monthly'  },
+  { re: /spotify/i,                          name: 'Spotify',           category: 'Entertainment',type: 'expense', color: '#b5f23a', frequency: 'monthly'  },
+  { re: /toyota finance|term loan.*toyota/i, name: 'Car Loan',          category: 'Transport',    type: 'expense', color: '#a78bfa', frequency: 'biweekly' },
+  { re: /sun.?life.*preauth|sunlife.*eft/i,  name: 'Sun Life Insurance',category: 'Healthcare',   type: 'expense', color: '#f2a83a', frequency: 'monthly'  },
 ];
 
 function normDesc(desc) {
@@ -2392,6 +2483,18 @@ function detectRecurringBills() {
     const days = matches.map(t => parseInt(t.date.slice(8)));
     const medianDay = days.sort((a, b) => a - b)[Math.floor(days.length / 2)];
 
+    // Auto-detect biweekly from actual intervals if pattern doesn't specify
+    let patFreq = p.frequency || 'monthly';
+    if (matches.length >= 3) {
+      const sdates = [...matches].sort((a,b) => a.date.localeCompare(b.date));
+      const ivals = [];
+      for (let i = 1; i < sdates.length; i++) {
+        ivals.push(Math.round((new Date(sdates[i].date) - new Date(sdates[i-1].date)) / 86400000));
+      }
+      const mI = ivals.sort((a,b)=>a-b)[Math.floor(ivals.length/2)];
+      if (mI >= 10 && mI <= 18) patFreq = 'biweekly';
+      else if (mI >= 25 && mI <= 35) patFreq = 'monthly';
+    }
     patternSuggestions.push({
       name: p.name,
       amount: Math.round(medianAmt * 100) / 100,
@@ -2399,6 +2502,7 @@ function detectRecurringBills() {
       category: p.category,
       type: p.type,
       color: p.color,
+      frequency: patFreq,
       sampleDesc: matches[0].desc,
       matchCount: months.size,
     });
@@ -2433,14 +2537,29 @@ function detectRecurringBills() {
 
     const amounts = txs.map(t => t.amount).sort((a, b) => a - b);
     const medianAmt = amounts[Math.floor(amounts.length / 2)];
-    const days = txs.map(t => parseInt(t.date.slice(8)));
-    const medianDay = days.sort((a, b) => a - b)[Math.floor(days.length / 2)];
     const variance = Math.max(...amounts) - Math.min(...amounts);
 
-    // Only suggest if amount is reasonably consistent (variance < 30% of median)
+    // Only suggest if amount is reasonably consistent (variance < 50% of median)
     if (medianAmt > 0 && variance / medianAmt > 0.5) return;
-    // Skip tiny amounts (likely variable small purchases, not bills)
     if (medianAmt < 15) return;
+
+    // ── Determine frequency from intervals between dates ──────────────────
+    const sortedDates = [...txs].sort((a,b) => a.date.localeCompare(b.date));
+    let detectedFreq = 'monthly';
+    if (sortedDates.length >= 3) {
+      const intervals = [];
+      for (let i = 1; i < sortedDates.length; i++) {
+        const ms = new Date(sortedDates[i].date) - new Date(sortedDates[i-1].date);
+        intervals.push(Math.round(ms / 86400000)); // days
+      }
+      const medInterval = intervals.sort((a,b)=>a-b)[Math.floor(intervals.length/2)];
+      if (medInterval >= 10 && medInterval <= 18) detectedFreq = 'biweekly';
+      else if (medInterval >= 25 && medInterval <= 35) detectedFreq = 'monthly';
+      else if (medInterval < 10 || medInterval > 35) return; // too erratic
+    }
+
+    const days = txs.map(t => parseInt(t.date.slice(8)));
+    const medianDay = [...days].sort((a,b)=>a-b)[Math.floor(days.length/2)];
 
     freqSuggestions.push({
       name: titleCase(txs[0].desc.slice(0, 35)),
@@ -2449,6 +2568,7 @@ function detectRecurringBills() {
       category: txs[0].category || 'Other',
       type: 'expense',
       color: '#f2a83a',
+      frequency: detectedFreq,
       sampleDesc: txs[0].desc,
       matchCount: months.size,
     });
@@ -2490,6 +2610,10 @@ function openRecurringSuggestionsModal() {
         <select class="form-select" id="rsug-cat-${idx}" style="flex:1;font-size:11px;">
           ${CATEGORIES.map(c => `<option ${c===s.category?'selected':''}>${c}</option>`).join('')}
         </select>
+        <select class="form-select" id="rsug-freq-${idx}" style="width:120px;font-size:11px;">
+          <option value="monthly" ${(s.frequency||'monthly')==='monthly'?'selected':''}>Monthly</option>
+          <option value="biweekly" ${s.frequency==='biweekly'?'selected':''}>Bi-weekly</option>
+        </select>
       </div>
     </div>`).join('');
 
@@ -2506,7 +2630,8 @@ function acceptRecurringSuggestion(idx) {
   const day    = parseInt(  ($('rsug-day-'  +idx)||{value:s.day  }).value)   || s.day;
   const cat    = ($('rsug-cat-'   +idx)||{value:s.category}).value || s.category;
   if (!state.bills) state.bills = [];
-  state.bills.push({ id: Date.now() + idx, name, amount, day, type: s.type, category: cat, color: s.color });
+  const freq = ($('rsug-freq-'+idx)||{value: s.frequency||'monthly'}).value;
+  state.bills.push({ id: Date.now() + idx, name, amount, day, type: s.type, category: cat, color: s.color, frequency: freq });
   saveState();
   const row = $('rsug-'+idx);
   if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; row.querySelector('.btn-primary').textContent = '✓ Added'; }
@@ -3113,27 +3238,61 @@ const BANK_PROFILES = [
   },
 
   {
-    name: 'Scotiabank Credit Card',
+    // Scotiabank Gold Amex / credit card "All transactions" export
+    // Columns: Filter, Date, Description, Sub-description, Status, Type of Transaction, Amount
+    // First data row may be a metadata row — we skip rows where date doesn't parse
+    name: 'Scotiabank Gold Amex',
+    icon: '🔴',
+    accountType: 'Credit Card',
+    exportPath: 'Online Banking → Credit Card → View transactions → Download → All transactions CSV',
+    detect(headers) {
+      const h = headers.map(x => x.toLowerCase().replace(/[^a-z]/g,''));
+      return h.some(x => x.includes('subdescription') || x.includes('typeoftransaction')) &&
+             h.some(x => x.includes('description')) &&
+             h.some(x => x.includes('amount'));
+    },
+    parse(rows, headers) {
+      const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.replace(/[^a-z]/gi,'')));
+      const di   = hii('date');
+      const dsi  = hii('description');
+      const sdsi = hii('sub.?desc|subdesc');
+      const ti   = hii('type');
+      const ai   = hii('amount');
+      return rows.map(r => {
+        const date = (r[di] || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null; // skip metadata rows
+        const desc    = (r[dsi]  || '').trim();
+        const subDesc = (r[sdsi] || '').trim();
+        const txType  = (r[ti]   || '').trim().toLowerCase();
+        const rawAmt  = parseFloat((r[ai] || '').replace(/[$,]/g,'')) || 0;
+        // "Debit" = purchase (expense = negative synthetic), "Credit" = payment/refund (positive)
+        const synthetic = txType === 'credit' ? rawAmt : -rawAmt;
+        // Build combined description: "merchant — location"
+        const fullDesc = subDesc ? `${titleCase(desc)} — ${subDesc}` : titleCase(desc);
+        // Payments are transfers; negative credits (refunds) are income
+        const hint = txType === 'credit' ? 'transfer' : 'expense';
+        return { date, desc: fullDesc, rawAmt: String(synthetic), hint };
+      }).filter(Boolean);
+    }
+  },
+
+  {
+    name: 'Scotiabank Credit Card (legacy)',
     icon: '🔴',
     accountType: 'Credit Card',
     exportPath: 'Online Banking → Credit Card account → Download transactions → CSV',
     detect(headers) {
       const h = headers.map(x => x.toLowerCase().trim());
-      // Scotia credit card CSV: Date, Description, Amount  (no separate withdrawal/deposit)
-      // Distinguished from generic by Scotia-specific column ordering & presence of balance
       return h.includes('date') && h.includes('description') &&
              h.some(x => x === 'amount') && h.some(x => x.includes('balance')) &&
              !h.some(x => x.includes('withdrawal'));
     },
     parse(rows, headers) {
       const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
-      const di  = hii('date');
-      const dsi = hii('description');
-      const ai  = hii('^amount$');
+      const di  = hii('date'), dsi = hii('description'), ai = hii('^amount$');
       return rows.map(r => {
-        // Credit card: positive = charge (expense), negative = payment/credit (income)
-        const raw = parseFloat((r[ai] || '').replace(/[$,]/g,'').replace(/\u2212/g,'-'));
-        const synthetic = isNaN(raw) ? 0 : -raw; // flip: charge becomes negative
+        const raw = parseFloat((r[ai] || '').replace(/[$,]/g,'').replace(/−/g,'-'));
+        const synthetic = isNaN(raw) ? 0 : -raw;
         return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
       });
     }
@@ -4214,38 +4373,58 @@ function refreshTransfers() {
 }
 
 // ═══════════════════════════════════
-// BANK TRANSFERS
+// ACCOUNT ACTIVITY PAGE
+// (Bank Transfers + CC Payments)
 // ═══════════════════════════════════
 
-function refreshBankTransfers() {
-  const all = state.transactions.filter(t => t.type === 'bank-transfer');
-  const sort = ($('bank-xfer-sort') || {value:'date-desc'}).value;
+function refreshAccountActivity() {
+  const sortVal = ($('bank-xfer-sort') || {value:'date-desc'}).value;
+  const ccSort  = ($('cc-pay-sort')    || {value:'date-desc'}).value;
 
-  let rows = [...all];
-  if (sort === 'date-desc')   rows.sort((a,b) => b.date.localeCompare(a.date));
-  if (sort === 'date-asc')    rows.sort((a,b) => a.date.localeCompare(b.date));
-  if (sort === 'amount-desc') rows.sort((a,b) => b.amount - a.amount);
-  if (sort === 'amount-asc')  rows.sort((a,b) => a.amount - b.amount);
-
-  const body = $('bank-xfer-body');
-  if (!body) return;
-
-  if (rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="5"><div class="empty-state" style="padding:24px;"><div class="empty-text">No bank transfers yet. Money you move between your own accounts (Simplii ↔ Wealthsimple) will appear here — separate from e-transfers to other people.</div></div></td></tr>`;
-    return;
+  function sortRows(rows, s) {
+    if (s === 'date-desc')   return [...rows].sort((a,b) => b.date.localeCompare(a.date));
+    if (s === 'date-asc')    return [...rows].sort((a,b) => a.date.localeCompare(b.date));
+    if (s === 'amount-desc') return [...rows].sort((a,b) => b.amount - a.amount);
+    if (s === 'amount-asc')  return [...rows].sort((a,b) => a.amount - b.amount);
+    return rows;
   }
 
-  body.innerHTML = rows.map(t => {
+  function rowHTML(t, showPromote) {
     const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
     return `<tr>
       <td><span class="highlight-val">${t.date}</span></td>
-      <td style="font-size:12px;color:var(--muted);">${t.desc}</td>
+      <td style="font-size:12px;">${t.desc}</td>
       <td class="tx-amount transfer" style="font-family:var(--mono);">⇄ ${fmt(t.amount)}</td>
       <td>${acct ? `<span class="account-pill">${acct}</span>` : ''}</td>
-      <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Move to Transactions</button></td>
+      <td>${showPromote ? `<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Transactions</button>` : ''}</td>
     </tr>`;
-  }).join('');
+  }
+
+  // ── CC Payments ──────────────────────────────────────────────────────────
+  const ccPays = state.transactions.filter(t =>
+    t.type === 'transfer' && t.category === 'Credit Card Payment'
+  );
+  const ccBody = $('cc-pay-body');
+  if (ccBody) {
+    const ccRows = sortRows(ccPays, ccSort);
+    ccBody.innerHTML = ccRows.length === 0
+      ? `<tr><td colspan="5"><div class="empty-state" style="padding:20px;"><div class="empty-text">No credit card payments found yet.</div></div></td></tr>`
+      : ccRows.map(t => rowHTML(t, true)).join('');
+  }
+
+  // ── Bank Transfers ───────────────────────────────────────────────────────
+  const bankXfers = state.transactions.filter(t => t.type === 'bank-transfer');
+  const bkBody = $('bank-xfer-body');
+  if (bkBody) {
+    const bkRows = sortRows(bankXfers, sortVal);
+    bkBody.innerHTML = bkRows.length === 0
+      ? `<tr><td colspan="5"><div class="empty-state" style="padding:20px;"><div class="empty-text">No bank transfers yet. Money moved between your own accounts appears here.</div></div></td></tr>`
+      : bkRows.map(t => rowHTML(t, true)).join('');
+  }
 }
+
+// Keep old name working for any lingering callers
+function refreshBankTransfers() { refreshAccountActivity(); }
 
 // ═══════════════════════════════════
 // TRIPS
