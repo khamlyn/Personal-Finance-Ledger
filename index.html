@@ -307,6 +307,20 @@
   .tx-amount.invest    { color: var(--accent3); font-family: var(--mono); }
   .tx-amount.transfer { color: var(--muted);   font-family: var(--mono); }
 
+  .account-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background: rgba(58,175,242,0.1);
+    color: #3ab5f2;
+    border: 1px solid rgba(58,175,242,0.25);
+    white-space: nowrap;
+  }
+
   .category-pill {
     display: inline-block;
     padding: 3px 10px;
@@ -1033,6 +1047,12 @@
       <div class="nav-item" onclick="switchView('holdings')">
         <span class="nav-icon">◭</span> Holdings
       </div>
+      <div class="nav-item" onclick="switchView('transfers')">
+        <span class="nav-icon">⇄</span> Transfers
+      </div>
+      <div class="nav-item" onclick="switchView('trips')">
+        <span class="nav-icon">✈</span> Trips
+      </div>
     </nav>
     <div class="sidebar-footer">
       100% private · local only
@@ -1174,7 +1194,7 @@
         <table class="tx-table">
           <thead>
             <tr>
-              <th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th></th>
+              <th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Account</th><th></th>
             </tr>
           </thead>
           <tbody id="tx-body">
@@ -1434,6 +1454,27 @@
 
       </div>
 
+      <!-- ── SECTION: INVESTMENTS ─────────────────────────────────────── -->
+      <div class="section-title">Investment Accounts</div>
+      <div class="hub-grid" style="margin-bottom:28px;">
+
+        <div class="hub-card">
+          <div class="hub-card-icon">🏢</div>
+          <div class="hub-card-label">Company Match RRSP</div>
+          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label">Current Market Value ($)</label>
+              <input type="number" class="form-input" id="hub-company-rrsp" placeholder="0" min="0"
+                oninput="saveHubField('companyRrsp', this.value); refreshNetWorthFromHub()">
+            </div>
+          </div>
+          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">
+            Update manually when you check your plan statement. Syncs to Net Worth as an Investment asset.
+          </div>
+        </div>
+
+      </div>
+
       <!-- ── NET WORTH IMPACT SUMMARY ─────────────────────────────────── -->
       <div class="section-title">Net Worth Impact</div>
       <div class="chart-card" style="padding:24px;">
@@ -1517,6 +1558,79 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ═══════════ TRANSFERS ═══════════ -->
+    <div id="view-transfers" class="view">
+      <div class="page-header">
+        <div class="page-title">E-Transfers</div>
+        <div id="transfers-summary" style="font-family:var(--mono);font-size:12px;color:var(--muted);"></div>
+      </div>
+
+      <div class="stat-grid" style="margin-bottom:24px;">
+        <div class="stat-card green">
+          <div class="stat-label">Total Received</div>
+          <div class="stat-value positive" id="xfer-total-in">$0</div>
+          <div class="stat-change" id="xfer-count-in">0 transfers</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Total Sent</div>
+          <div class="stat-value negative" id="xfer-total-out">$0</div>
+          <div class="stat-change" id="xfer-count-out">0 transfers</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Net</div>
+          <div class="stat-value" id="xfer-net">$0</div>
+          <div class="stat-change">received − sent</div>
+        </div>
+      </div>
+
+      <!-- Contacts summary -->
+      <div class="section-title">By Contact</div>
+      <div id="xfer-contacts" class="chart-card" style="padding:0;overflow:hidden;margin-bottom:24px;"></div>
+
+      <!-- All transfer transactions, sortable -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div class="section-title" style="margin-bottom:0;">All E-Transfer Transactions</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select class="form-select" id="xfer-filter-dir" style="width:auto;font-size:12px;" onchange="refreshTransfers()">
+            <option value="all">All</option>
+            <option value="in">Received</option>
+            <option value="out">Sent</option>
+          </select>
+          <select class="form-select" id="xfer-sort" style="width:auto;font-size:12px;" onchange="refreshTransfers()">
+            <option value="date-desc">Date ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="amount-desc">Amount ↓</option>
+            <option value="amount-asc">Amount ↑</option>
+            <option value="contact">Contact A–Z</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <table class="tx-table">
+          <thead><tr>
+            <th>Date</th><th>Contact</th><th>Description</th><th>Direction</th><th>Amount</th><th>Account</th>
+          </tr></thead>
+          <tbody id="xfer-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════ TRIPS ═══════════ -->
+    <div id="view-trips" class="view">
+      <div class="page-header">
+        <div class="page-title">Trips</div>
+        <button class="btn btn-primary" onclick="openModal('trip-modal')">+ Add Trip</button>
+      </div>
+
+      <div id="trips-list">
+        <div class="empty-state" style="padding:60px;">
+          <div class="empty-icon">✈</div>
+          <div class="empty-text" style="margin-bottom:16px;">No trips yet. Add one to get started.</div>
+          <button class="btn btn-primary" onclick="openModal('trip-modal')">+ Add Trip</button>
+        </div>
+      </div>
     </div>
 
   </main>
@@ -1713,6 +1827,61 @@
   </div>
 </div>
 
+<!-- Trip Modal -->
+<div class="modal-overlay" id="trip-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">Add Trip</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Trip Name</label>
+        <input type="text" class="form-input" id="trip-name" placeholder="e.g. Hawaii 2026, Christmas NL">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-input" id="trip-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date</label>
+        <input type="date" class="form-input" id="trip-end">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Location / Destination</label>
+        <input type="text" class="form-input" id="trip-location" placeholder="e.g. Honolulu, Hawaii">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input type="text" class="form-input" id="trip-notes" placeholder="Optional notes about the trip">
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px;">
+      Expenses within the date range will be auto-attached. You can also manually add pre-trip expenses (flights, hotels) after creating.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('trip-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addTrip()">Create Trip</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Review Modal -->
+<div class="modal-overlay" id="review-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title">Review Uncategorized Transactions</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;" id="review-progress"></div>
+    <div id="review-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('review-modal')">Skip All</button>
+      <button class="btn btn-primary" onclick="saveReviewAndNext()">Save & Next</button>
+    </div>
+  </div>
+</div>
+
 <!-- Recurring Bill Modal -->
 <div class="modal-overlay" id="bill-modal">
   <div class="modal">
@@ -1793,7 +1962,8 @@ let state = {
   goals: [],
   hub: {},
   bills: [],
-  holdings: []   // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
+  holdings: [],  // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
+  trips: []
 };
 
 let txFilter = 'all';
@@ -1837,6 +2007,8 @@ function switchView(view) {
   if (view === 'transactions') refreshTransactions();
   if (view === 'hub') loadHubInputs();
   if (view === 'holdings') refreshHoldings();
+  if (view === 'transfers') refreshTransfers();
+  if (view === 'trips') refreshTrips();
 }
 
 // ═══════════════════════════════════
@@ -1887,10 +2059,14 @@ function refreshTransactions() {
   body.innerHTML = filtered.map(t => `
     <tr>
       <td><span class="highlight-val">${t.date}</span></td>
-      <td>${t.desc}</td>
-      <td><span class="category-pill">${t.category}</span></td>
+      <td>
+        <div>${t.desc}</div>
+        ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}</div>` : ''}
+      </td>
+      <td><span class="category-pill">${t.category||'Other'}</span></td>
       <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
       <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
+      <td>${t.account ? `<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')}</span>` : ''}</td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>
   `).join('');
@@ -2822,29 +2998,34 @@ const BANK_PROFILES = [
 
   // ─── CIBC ─────────────────────────────────────────────────────────────────
   {
+    // Actual CIBC CC export: NO header row. Columns: Date, Description, Debit, Credit, CardNumber
+    // Date format: YYYY-MM-DD. Debit = purchase (expense), Credit = payment (income).
     name: 'CIBC Credit Card',
     icon: '🔵',
     accountType: 'Credit Card',
-    exportPath: 'Online Banking → Credit Card → Download → CSV',
+    exportPath: 'Online Banking → Credit Card → Download transactions → CSV',
     detect(headers) {
-      const h = headers.map(x => x.toLowerCase().trim());
-      // CIBC CC: Date, Description, Debit, Credit  (same split-column pattern as TD chequing
-      // but distinguished by presence of "card" in filename hint — we rely on order priority)
-      return h.includes('date') && h.includes('description')
-          && h.includes('debit') && h.includes('credit')
-          && !h.includes('balance');  // CIBC CC has no Balance column; TD chequing does
+      // CIBC has no header — first row IS data. Detect by: col0 looks like YYYY-MM-DD date,
+      // col4 looks like a masked card number (contains ****), 5 columns total
+      if (headers.length < 4) return false;
+      const col0 = (headers[0] || '').trim();
+      const col4 = (headers[4] || headers[3] || '').trim();
+      return /^\d{4}-\d{2}-\d{2}$/.test(col0) && /\*{4}/.test(col4);
     },
     parse(rows, headers) {
-      const hi = h => headers.findIndex(x => x.toLowerCase().trim() === h);
-      const di = hi('date'), dsi = hi('description');
-      const dbi = hi('debit'), cri = hi('credit');
-      return rows.map(r => {
-        // CIBC CC: Debit = charge (expense), Credit = payment (income)
-        const debit  = parseFloat((r[dbi] || '').replace(/[$,]/g,'')) || 0;
-        const credit = parseFloat((r[cri] || '').replace(/[$,]/g,'')) || 0;
+      // headers is actually the first data row — include it back
+      const allRows = [headers, ...rows];
+      return allRows.map(r => {
+        const date  = (r[0] || '').trim();
+        const desc  = (r[1] || '').trim();
+        const debit = parseFloat((r[2] || '').replace(/[$,]/g,'').trim()) || 0;
+        const credit= parseFloat((r[3] || '').replace(/[$,]/g,'').trim()) || 0;
+        // Debit = purchase (expense → negative), Credit = payment (income → positive)
         const synthetic = credit > 0 ? credit : -debit;
-        return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
-      });
+        // Payments back to card are 'transfer', purchases are 'expense'
+        const hint = credit > 0 ? 'transfer' : 'expense';
+        return { date, desc, rawAmt: String(synthetic), hint };
+      }).filter(r => r.date && r.desc);
     }
   },
 
@@ -3066,10 +3247,12 @@ function importCSV() {
     state.transactions.push({
       id: Date.now() + idx,
       date,
-      desc: item.desc,
+      desc:     item.desc,
       amount,
       type,
-      category: guessCategory(item.desc)
+      category: guessCategory(item.desc),
+      account:  item.account || profile.name,
+      contact:  item.contact || extractContact(item.desc, type)
     });
     imported++;
   });
@@ -3083,6 +3266,14 @@ function importCSV() {
   if (bad > 0)     parts.push(`${bad} unreadable rows ignored`);
   showToast(parts.join(' · '));
   refreshDashboard();
+
+  // Surface uncategorized 'Other' expense/income transactions for manual review
+  const uncatIds = state.transactions
+    .filter(t => t.category === 'Other' && (t.type === 'expense' || t.type === 'income'))
+    .map(t => t.id);
+  if (uncatIds.length > 0) {
+    setTimeout(() => startCategoryReview(uncatIds), 600);
+  }
 }
 
 function normalizeDate(d) {
@@ -3095,30 +3286,57 @@ function normalizeDate(d) {
   return d;
 }
 
+function extractContact(desc, type) {
+  if (!desc) return null;
+  // Simplii e-transfers: "INTERAC E-TRANSFER SEND Katie" / "INTERAC E-TRANSFER RECEIVE KATHERINE MYERS"
+  const etIn  = desc.match(/INTERAC E-TRANSFER RECEIVE (.+)/i);
+  const etOut = desc.match(/INTERAC E-TRANSFER SEND (.+)/i);
+  if (etIn)  return { name: titleCase(etIn[1].trim()),  dir: 'in'  };
+  if (etOut) return { name: titleCase(etOut[1].trim()), dir: 'out' };
+  return null;
+}
+
+function titleCase(s) {
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function guessCategory(desc) {
+  if (!desc) return 'Other';
   const d = desc.toLowerCase();
   // Inter-account transfers
   if (/wealthsimple investments|kurt wealthsimple|e-transfer receive kurt hamlyn/i.test(desc)) return 'Transfer';
   // Wealthsimple activity types
-  if (/direct deposit|aft.?in/.test(d))             return 'Salary';
-  if (/dividend/.test(d))                            return 'Investment';
-  if (/interest/.test(d))                            return 'Investment';
-  if (/bill payment|obp.?out/.test(d))              return 'Utilities';
-  if (/e.?transfer out|e_trfout/.test(d))           return 'Other';
-  if (/e.?transfer in|e_trfin/.test(d))             return 'Other';
-  if (/bonus|giveaway/.test(d))                     return 'Other';
-  if (/buy:|sell:|trade/.test(d))                   return 'Investment';
-  if (/fee/.test(d))                                return 'Other';
-  if (/internal transfer|transfer_tf/.test(d))      return 'Other';
-  // General merchant matching
-  if (/grocery|supermarket|whole foods|loblaws|sobeys/.test(d)) return 'Food & Dining';
-  if (/restaurant|cafe|coffee|starbucks|mcdonald|pizza|tim horton/.test(d)) return 'Food & Dining';
-  if (/rent|mortgage|hydro|electric|water|internet|rogers|bell/.test(d)) return 'Housing';
+  if (/direct deposit|aft.?in/.test(d))        return 'Salary';
+  if (/dividend/.test(d))                       return 'Investment';
+  if (/buy:|sell:|trade/.test(d))               return 'Investment';
+  if (/fee/.test(d))                            return 'Other';
+  if (/internal transfer|transfer_tf/.test(d))  return 'Transfer';
+  if (/bill payment|obp.?out/.test(d))         return 'Utilities';
+  if (/bonus|giveaway/.test(d))                return 'Other';
+  // CIBC merchants
+  if (/costco wholesale|costco gas/.test(d))    return 'Shopping';
+  if (/costco trave|travel|airbnb|hotel|resort|flight|westjet|air canada/.test(d)) return 'Travel';
+  if (/tide.?boar|brewing|bar |pub |lounge|restaurant|bistro|cafe|brasserie/.test(d)) return 'Food & Dining';
+  if (/mancuso|clinic|pharmacy|shoppers|doctor|dental|medical|health|physio/.test(d)) return 'Healthcare';
+  if (/sq \*|pos |purchase interest|interest/.test(d)) return 'Other';
+  if (/nslsc|student loan/.test(d))            return 'Loan Payment';
+  if (/mortgage|merix/.test(d))                return 'Housing';
+  if (/toyota finance|term loan/.test(d))      return 'Transport';
+  if (/nb power|energie nb|hydro|electric|water|gas utility/.test(d)) return 'Utilities';
+  if (/sunlife|sun life/.test(d))              return 'Healthcare';
+  if (/carbon rebate|tax refund|government/.test(d)) return 'Income';
+  if (/visa td|mastercard cibc|scotiabank.*expre|credit card payment|payment thank you/.test(d)) return 'Transfer';
+  if (/snow removal|cleaning|clean|pearlmaid/.test(d)) return 'Home Services';
+  if (/golf|hockey|sport|gym|fitness/.test(d)) return 'Entertainment';
+  if (/abm|atm|withdrawal/.test(d))           return 'Cash';
+  if (/paypal/.test(d))                        return 'Shopping';
+  if (/grocery|loblaws|sobeys|superstore/.test(d)) return 'Food & Dining';
+  if (/rent|mortgage|hydro|internet|rogers|bell/.test(d)) return 'Housing';
   if (/uber|lyft|gas|shell|esso|transit|parking|taxi/.test(d)) return 'Transport';
   if (/netflix|spotify|amazon prime|cinema|theatre/.test(d)) return 'Entertainment';
-  if (/pharmacy|shoppers|doctor|dental|medical/.test(d)) return 'Healthcare';
-  if (/amazon|walmart|target|shopping/.test(d)) return 'Shopping';
+  if (/amazon|walmart|target/.test(d)) return 'Shopping';
   if (/salary|payroll|deposit|employer/.test(d)) return 'Salary';
+  if (/e-transfer receive|e-transfer send/.test(d)) return 'Transfer';
   return 'Other';
 }
 
@@ -3138,14 +3356,15 @@ function saveHubField(key, val) {
 function loadHubInputs() {
   if (!state.hub) state.hub = {};
   const fields = {
-    'hub-home-value':  'homeValue',
-    'hub-mortgage':    'mortgage',
-    'hub-car1-value':  'car1Value',
-    'hub-car1-loan':   'car1Loan',
-    'hub-car2-value':  'car2Value',
-    'hub-car2-loan':   'car2Loan',
-    'hub-student-loan':'studentLoan',
-    'hub-loc':         'loc'
+    'hub-home-value':    'homeValue',
+    'hub-mortgage':      'mortgage',
+    'hub-car1-value':    'car1Value',
+    'hub-car1-loan':     'car1Loan',
+    'hub-car2-value':    'car2Value',
+    'hub-car2-loan':     'car2Loan',
+    'hub-student-loan':  'studentLoan',
+    'hub-loc':           'loc',
+    'hub-company-rrsp':  'companyRrsp'
   };
   Object.entries(fields).forEach(([id, key]) => {
     const el = $(id);
@@ -3160,14 +3379,15 @@ function hubVal(key) {
 
 function refreshNetWorthFromHub() {
   const h = state.hub || {};
-  const homeVal  = hubVal('homeValue');
-  const mortgage = hubVal('mortgage');
-  const car1Val  = hubVal('car1Value');
-  const car1Loan = hubVal('car1Loan');
-  const car2Val  = hubVal('car2Value');
-  const car2Loan = hubVal('car2Loan');
+  const homeVal     = hubVal('homeValue');
+  const mortgage    = hubVal('mortgage');
+  const car1Val     = hubVal('car1Value');
+  const car1Loan    = hubVal('car1Loan');
+  const car2Val     = hubVal('car2Value');
+  const car2Loan    = hubVal('car2Loan');
   const studentLoan = hubVal('studentLoan');
-  const loc      = hubVal('loc');
+  const loc         = hubVal('loc');
+  const companyRrsp = hubVal('companyRrsp');
 
   // Equity badges
   function setEquityBadge(id, assetVal, debtVal) {
@@ -3184,7 +3404,7 @@ function refreshNetWorthFromHub() {
   setEquityBadge('car2-equity-badge', car2Val, car2Loan);
 
   // Summary totals
-  const totalAssets = homeVal + car1Val + car2Val;
+  const totalAssets = homeVal + car1Val + car2Val + companyRrsp;
   const totalDebts  = mortgage + car1Loan + car2Loan + studentLoan + loc;
   const netEquity   = totalAssets - totalDebts;
 
@@ -3202,9 +3422,10 @@ function refreshNetWorthFromHub() {
   // ── Sync into state.assets / state.liabilities so Net Worth page reflects these ──
   // We use reserved IDs (negative numbers) to identify hub-managed entries
   const hubAssets = [
-    { id: -1, name: 'Home',      type: 'Real Estate', value: homeVal },
-    { id: -2, name: 'Vehicle 1', type: 'Vehicle',     value: car1Val },
-    { id: -3, name: 'Vehicle 2', type: 'Vehicle',     value: car2Val },
+    { id: -1, name: 'Home',           type: 'Real Estate', value: homeVal },
+    { id: -2, name: 'Vehicle 1',      type: 'Vehicle',     value: car1Val },
+    { id: -3, name: 'Vehicle 2',      type: 'Vehicle',     value: car2Val },
+    { id: -6, name: 'Company RRSP',   type: 'Investment',  value: companyRrsp },
   ].filter(a => a.value > 0);
 
   const hubLiabilities = [
@@ -3490,6 +3711,274 @@ function refreshHoldings() {
   }).join('');
 }
 
+
+// ═══════════════════════════════════
+// TRANSFERS TAB
+// ═══════════════════════════════════
+
+function refreshTransfers() {
+  // All e-transfer transactions (those with a contact attribute)
+  const allXfer = state.transactions.filter(t => t.contact);
+
+  // Stats
+  const received = allXfer.filter(t => t.contact.dir === 'in');
+  const sent     = allXfer.filter(t => t.contact.dir === 'out');
+  const totalIn  = received.reduce((s,t) => s + t.amount, 0);
+  const totalOut = sent.reduce((s,t)     => s + t.amount, 0);
+  const net      = totalIn - totalOut;
+
+  const set = (id, v) => { const el = $(id); if(el) el.textContent = v; };
+  set('xfer-total-in',  fmt(totalIn));
+  set('xfer-total-out', fmt(totalOut));
+  set('xfer-count-in',  received.length + ' transfer' + (received.length !== 1 ? 's' : ''));
+  set('xfer-count-out', sent.length + ' transfer' + (sent.length !== 1 ? 's' : ''));
+  const netEl = $('xfer-net');
+  if (netEl) {
+    netEl.textContent = (net >= 0 ? '+' : '') + fmt(net);
+    netEl.className = 'stat-value ' + (net >= 0 ? 'positive' : 'negative');
+  }
+
+  // By contact summary
+  const contacts = {};
+  allXfer.forEach(t => {
+    const name = t.contact.name;
+    if (!contacts[name]) contacts[name] = { in: 0, out: 0, count: 0 };
+    contacts[name][t.contact.dir] += t.amount;
+    contacts[name].count++;
+  });
+  const contactRows = Object.entries(contacts)
+    .sort((a,b) => (b[1].in + b[1].out) - (a[1].in + a[1].out));
+  const cc = $('xfer-contacts');
+  if (cc) {
+    if (contactRows.length === 0) {
+      cc.innerHTML = `<div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfer contacts found. Import Simplii transactions to see contacts.</div></div>`;
+    } else {
+      cc.innerHTML = contactRows.map(([name, d]) => `
+        <div class="bill-row" style="gap:12px;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${name}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d.count} transaction${d.count!==1?'s':''}</div>
+          </div>
+          ${d.in  > 0 ? `<div style="font-family:var(--mono);font-size:12px;color:var(--accent);">↙ ${fmt(d.in)}</div>` : ''}
+          ${d.out > 0 ? `<div style="font-family:var(--mono);font-size:12px;color:var(--red);">↗ ${fmt(d.out)}</div>` : ''}
+        </div>`).join('');
+    }
+  }
+
+  // Transaction table
+  const dir  = ($('xfer-filter-dir') || {value:'all'}).value;
+  const sort = ($('xfer-sort') || {value:'date-desc'}).value;
+
+  let rows = allXfer.filter(t => dir === 'all' || t.contact.dir === dir);
+  if (sort === 'date-desc')    rows.sort((a,b) => b.date.localeCompare(a.date));
+  if (sort === 'date-asc')     rows.sort((a,b) => a.date.localeCompare(b.date));
+  if (sort === 'amount-desc')  rows.sort((a,b) => b.amount - a.amount);
+  if (sort === 'amount-asc')   rows.sort((a,b) => a.amount - b.amount);
+  if (sort === 'contact')      rows.sort((a,b) => a.contact.name.localeCompare(b.contact.name));
+
+  const body = $('xfer-body');
+  if (!body) return;
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfers found.</div></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(t => `
+    <tr>
+      <td><span class="highlight-val">${t.date}</span></td>
+      <td style="font-weight:500;">${t.contact.name}</td>
+      <td style="font-size:12px;color:var(--muted);">${t.desc}</td>
+      <td>
+        <span style="font-family:var(--mono);font-size:11px;color:${t.contact.dir==='in'?'var(--accent)':'var(--red)'};">
+          ${t.contact.dir==='in'?'↙ Received':'↗ Sent'}
+        </span>
+      </td>
+      <td class="tx-amount ${t.contact.dir==='in'?'income':'expense'}">${t.contact.dir==='in'?'+':'-'}${fmt(t.amount)}</td>
+      <td>${t.account ? `<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')}</span>` : ''}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════
+// TRIPS
+// ═══════════════════════════════════
+
+function addTrip() {
+  const name     = $('trip-name').value.trim();
+  const start    = $('trip-start').value;
+  const end      = $('trip-end').value;
+  const location = $('trip-location').value.trim();
+  const notes    = $('trip-notes').value.trim();
+  if (!name || !start || !end) { showToast('Please fill in name and dates.'); return; }
+  if (!state.trips) state.trips = [];
+  state.trips.push({ id: Date.now(), name, start, end, location, notes, extraTxIds: [] });
+  saveState();
+  closeModal('trip-modal');
+  ['trip-name','trip-start','trip-end','trip-location','trip-notes'].forEach(id => { const el=$(id); if(el) el.value=''; });
+  showToast('Trip created!');
+  refreshTrips();
+}
+
+function deleteTrip(id) {
+  state.trips = (state.trips||[]).filter(t => t.id !== id);
+  saveState();
+  refreshTrips();
+}
+
+function toggleTripExtra(tripId, txId) {
+  const trip = (state.trips||[]).find(t => t.id === tripId);
+  if (!trip) return;
+  const idx = trip.extraTxIds.indexOf(txId);
+  if (idx >= 0) trip.extraTxIds.splice(idx, 1);
+  else trip.extraTxIds.push(txId);
+  saveState();
+  refreshTrips();
+}
+
+function refreshTrips() {
+  const el = $('trips-list');
+  if (!el) return;
+  const trips = state.trips || [];
+  if (trips.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="padding:60px;"><div class="empty-icon">✈</div><div class="empty-text" style="margin-bottom:16px;">No trips yet.</div><button class="btn btn-primary" onclick="openModal('trip-modal')">+ Add Trip</button></div>`;
+    return;
+  }
+
+  el.innerHTML = trips.map(trip => {
+    // Auto-gather expenses in date range (expenses + invest, not transfer)
+    const inRange = state.transactions.filter(t =>
+      t.date >= trip.start && t.date <= trip.end &&
+      (t.type === 'expense' || t.type === 'invest')
+    );
+    // Extra manually-attached transactions
+    const extras = state.transactions.filter(t => (trip.extraTxIds||[]).includes(t.id));
+    const allTripTx = [...new Map([...inRange,...extras].map(t=>[t.id,t])).values()];
+    const total = allTripTx.reduce((s,t) => s + t.amount, 0);
+
+    // Transactions NOT in range for manual-add picker
+    const notInTrip = state.transactions.filter(t =>
+      (t.type === 'expense' || t.type === 'invest') &&
+      !(t.date >= trip.start && t.date <= trip.end) &&
+      !(trip.extraTxIds||[]).includes(t.id)
+    ).slice(0,50); // limit picker
+
+    const mapUrl = trip.location
+      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(trip.location)}&zoom=7&size=600x200&maptype=roadmap&style=element:geometry|color:0x1b1f1b&style=element:labels.text.fill|color:0xb5f23a&key=`
+      : null;
+
+    return `<div class="trip-card" style="margin-bottom:24px;">
+      <div class="trip-header">
+        <div class="trip-map-bg" style="background:linear-gradient(135deg,#1b2b1b 0%,#0d1a0d 100%);min-height:80px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;padding:16px;">
+          <div>
+            <div style="font-family:var(--serif);font-size:22px;">${trip.name}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:4px;">
+              📍 ${trip.location||'—'} &nbsp;·&nbsp; ${trip.start} → ${trip.end}
+            </div>
+            ${trip.notes ? `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">${trip.notes}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:0 0 10px 10px;border:1px solid var(--border);border-top:none;">
+          <div>
+            <span style="font-family:var(--serif);font-size:24px;color:var(--accent);">${fmt(total)}</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px;">total · ${allTripTx.length} transactions</span>
+          </div>
+          <button class="btn btn-danger" onclick="deleteTrip(${trip.id})">Delete Trip</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:12px;">
+        <div style="padding:12px 16px;background:var(--surface2);font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
+          Transactions in trip date range
+        </div>
+        ${allTripTx.length > 0 ? `<table class="tx-table" style="margin:0;">
+          <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Account</th><th></th></tr></thead>
+          <tbody>${allTripTx.map(t => `<tr>
+            <td><span class="highlight-val">${t.date}</span></td>
+            <td style="font-size:12px;">${t.desc}</td>
+            <td><span class="category-pill">${t.category||'Other'}</span></td>
+            <td class="tx-amount expense">-${fmt(t.amount)}</td>
+            <td>${t.account?`<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple')}</span>`:''}</td>
+            <td>${(trip.extraTxIds||[]).includes(t.id)?`<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="toggleTripExtra(${trip.id},${t.id})">Remove</button>`:''}</td>
+          </tr>`).join('')}</tbody>
+        </table>` : `<div class="empty-state" style="padding:20px;"><div class="empty-text">No expenses found in this date range.</div></div>`}
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
+          + Attach pre-trip expense (flight, hotel, etc.)
+        </div>
+        <select class="form-select" id="trip-extra-${trip.id}" style="font-size:11px;width:100%;max-width:400px;">
+          <option value="">Select a transaction to attach…</option>
+          ${notInTrip.map(t=>`<option value="${t.id}">${t.date} — ${t.desc.slice(0,40)} — ${fmt(t.amount)}</option>`).join('')}
+        </select>
+        <button class="btn btn-ghost" style="margin-top:8px;font-size:11px;" onclick="attachTripExtra(${trip.id})">Attach</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function attachTripExtra(tripId) {
+  const sel = $('trip-extra-' + tripId);
+  if (!sel || !sel.value) return;
+  toggleTripExtra(tripId, parseInt(sel.value));
+}
+
+// ═══════════════════════════════════
+// CATEGORY REVIEW MODAL
+// ═══════════════════════════════════
+
+let reviewQueue = [];
+let reviewIdx   = 0;
+
+const CATEGORIES = ['Food & Dining','Housing','Transport','Healthcare','Entertainment',
+  'Shopping','Utilities','Salary','Investment','Travel','Loan Payment','Home Services',
+  'Cash','Transfer','Income','Other'];
+
+function startCategoryReview(txIds) {
+  reviewQueue = txIds;
+  reviewIdx   = 0;
+  if (reviewQueue.length === 0) return;
+  showReviewItem();
+  openModal('review-modal');
+}
+
+function showReviewItem() {
+  if (reviewIdx >= reviewQueue.length) {
+    closeModal('review-modal');
+    saveState();
+    refreshDashboard();
+    showToast('Categories saved!');
+    return;
+  }
+  const t = state.transactions.find(x => x.id === reviewQueue[reviewIdx]);
+  if (!t) { reviewIdx++; showReviewItem(); return; }
+
+  $('review-progress').textContent = `${reviewIdx + 1} of ${reviewQueue.length} — flagged as "Other"`;
+  $('review-body').innerHTML = `
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;">${t.date} · ${t.account||''}</div>
+      <div style="font-size:14px;margin-bottom:8px;">${t.desc}</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</span>
+        <span class="account-pill">${t.account||'Unknown'}</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Assign Category</label>
+      <select class="form-select" id="review-cat">
+        ${CATEGORIES.map(c => `<option value="${c}" ${c===t.category?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>`;
+}
+
+function saveReviewAndNext() {
+  const t = state.transactions.find(x => x.id === reviewQueue[reviewIdx]);
+  if (t) {
+    const sel = $('review-cat');
+    if (sel) t.category = sel.value;
+  }
+  reviewIdx++;
+  showReviewItem();
+}
+
 // ═══════════════════════════════════
 // CROSS-ACCOUNT TRANSFER RECONCILIATION
 // ═══════════════════════════════════
@@ -3559,6 +4048,7 @@ function loadState() {
       });
       if (!state.holdings) state.holdings = [];
       if (!state.bills)    state.bills    = [];
+      if (!state.trips)    state.trips    = [];
       return true;
     }
   } catch(e) {
