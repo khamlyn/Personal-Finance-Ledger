@@ -1365,123 +1365,39 @@
       </div>
 
       <!-- ── SECTION: PROPERTY ────────────────────────────────────────── -->
-      <div class="section-title">Property</div>
-      <div class="hub-grid" style="margin-bottom:28px;">
-
-        <div class="hub-card">
-          <div class="hub-card-icon">🏠</div>
-          <div class="hub-card-label">Home</div>
-          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Estimated Value ($)</label>
-              <input type="number" class="form-input" id="hub-home-value" placeholder="0" min="0"
-                oninput="saveHubField('homeValue', this.value); refreshNetWorthFromHub()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Outstanding Mortgage ($)</label>
-              <input type="number" class="form-input" id="hub-mortgage" placeholder="0" min="0"
-                oninput="saveHubField('mortgage', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div id="home-equity-badge" class="hub-equity-badge" style="display:none;"></div>
-        </div>
-
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0;">Property</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openHubItemModal('property')">+ Add Property</button>
       </div>
+      <div class="hub-grid" id="hub-properties-grid" style="margin-bottom:28px;"></div>
 
       <!-- ── SECTION: VEHICLES ────────────────────────────────────────── -->
-      <div class="section-title">Vehicles</div>
-      <div class="hub-grid" style="margin-bottom:28px;">
-
-        <div class="hub-card">
-          <div class="hub-card-icon">🚗</div>
-          <div class="hub-card-label">Vehicle 1</div>
-          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Estimated Value ($)</label>
-              <input type="number" class="form-input" id="hub-car1-value" placeholder="0" min="0"
-                oninput="saveHubField('car1Value', this.value); refreshNetWorthFromHub()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Outstanding Loan ($)</label>
-              <input type="number" class="form-input" id="hub-car1-loan" placeholder="0" min="0"
-                oninput="saveHubField('car1Loan', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div id="car1-equity-badge" class="hub-equity-badge" style="display:none;"></div>
-        </div>
-
-        <div class="hub-card">
-          <div class="hub-card-icon">🚙</div>
-          <div class="hub-card-label">Vehicle 2 <span style="font-size:10px; color:var(--muted)">(optional)</span></div>
-          <div class="form-row cols-2" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Estimated Value ($)</label>
-              <input type="number" class="form-input" id="hub-car2-value" placeholder="0" min="0"
-                oninput="saveHubField('car2Value', this.value); refreshNetWorthFromHub()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Outstanding Loan ($)</label>
-              <input type="number" class="form-input" id="hub-car2-loan" placeholder="0" min="0"
-                oninput="saveHubField('car2Loan', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div id="car2-equity-badge" class="hub-equity-badge" style="display:none;"></div>
-        </div>
-
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0;">Vehicles</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openHubItemModal('vehicle')">+ Add Vehicle</button>
       </div>
+      <div class="hub-grid" id="hub-vehicles-grid" style="margin-bottom:28px;"></div>
 
-      <!-- ── SECTION: DEBTS ──────────────────────────────────────────── -->
-      <div class="section-title">Debts & Loans</div>
-      <div class="hub-grid" style="margin-bottom:28px;">
-
-        <div class="hub-card">
-          <div class="hub-card-icon">🎓</div>
-          <div class="hub-card-label">Government Student Loan (NSLSC)</div>
-          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Current Balance ($)</label>
-              <input type="number" class="form-input" id="hub-student-loan" placeholder="0" min="0"
-                oninput="saveHubField('studentLoan', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">Update manually when you make payments or receive your NSLSC statement.</div>
-        </div>
-
-        <div class="hub-card">
-          <div class="hub-card-icon">💳</div>
-          <div class="hub-card-label">Scotiabank Line of Credit</div>
-          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Current Balance Owed ($)</label>
-              <input type="number" class="form-input" id="hub-loc" placeholder="0" min="0"
-                oninput="saveHubField('loc', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">LOC balance — update when it changes.</div>
-        </div>
-
+      <!-- ── SECTION: CREDIT CARDS ─────────────────────────────────────── -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0;">Credit Cards</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openHubItemModal('creditcard')">+ Add Credit Card</button>
       </div>
+      <div class="hub-grid" id="hub-creditcards-grid" style="margin-bottom:28px;"></div>
+
+      <!-- ── SECTION: DEBTS & LOANS ─────────────────────────────────────── -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0;">Debts & Loans</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openHubItemModal('debt')">+ Add Debt / Loan</button>
+      </div>
+      <div class="hub-grid" id="hub-debts-grid" style="margin-bottom:28px;"></div>
 
       <!-- ── SECTION: INVESTMENTS ─────────────────────────────────────── -->
-      <div class="section-title">Investment Accounts</div>
-      <div class="hub-grid" style="margin-bottom:28px;">
-
-        <div class="hub-card">
-          <div class="hub-card-icon">🏢</div>
-          <div class="hub-card-label">Company Match RRSP</div>
-          <div class="form-row" style="margin-top:12px; margin-bottom:0;">
-            <div class="form-group">
-              <label class="form-label">Current Market Value ($)</label>
-              <input type="number" class="form-input" id="hub-company-rrsp" placeholder="0" min="0"
-                oninput="saveHubField('companyRrsp', this.value); refreshNetWorthFromHub()">
-            </div>
-          </div>
-          <div style="margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted);">
-            Update manually when you check your plan statement. Syncs to Net Worth as an Investment asset.
-          </div>
-        </div>
-
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0;">Investment Accounts</div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openHubItemModal('investment')">+ Add Investment</button>
       </div>
+      <div class="hub-grid" id="hub-investments-grid" style="margin-bottom:28px;"></div>
 
       <!-- ── NET WORTH IMPACT SUMMARY ─────────────────────────────────── -->
       <div class="section-title">Net Worth Impact</div>
@@ -1618,9 +1534,31 @@
       <div class="chart-card" style="padding:0;overflow:hidden;">
         <table class="tx-table">
           <thead><tr>
-            <th>Date</th><th>Contact</th><th>Description</th><th>Direction</th><th>Amount</th><th>Account</th>
+            <th>Date</th><th>Contact</th><th>Description</th><th>Direction</th><th>Amount</th><th>Account</th><th></th>
           </tr></thead>
           <tbody id="xfer-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Bank Transfers section -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:32px 0 12px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div class="section-title" style="margin-bottom:2px;">Bank Transfers</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Your own money moved between Simplii and Wealthsimple. Not counted as income or expenses.</div>
+        </div>
+        <select class="form-select" id="bank-xfer-sort" style="width:auto;font-size:12px;" onchange="refreshBankTransfers()">
+          <option value="date-desc">Date ↓</option>
+          <option value="date-asc">Date ↑</option>
+          <option value="amount-desc">Amount ↓</option>
+          <option value="amount-asc">Amount ↑</option>
+        </select>
+      </div>
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <table class="tx-table">
+          <thead><tr>
+            <th>Date</th><th>Description</th><th>Amount</th><th>Account</th><th></th>
+          </tr></thead>
+          <tbody id="bank-xfer-body"></tbody>
         </table>
       </div>
     </div>
@@ -1843,6 +1781,41 @@
   </div>
 </div>
 
+<!-- Hub Item Modal -->
+<div class="modal-overlay" id="hub-item-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title" id="hub-item-modal-title">Add Item</div>
+    <input type="hidden" id="hub-item-type">
+    <input type="hidden" id="hub-item-edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Name / Label</label>
+        <input type="text" class="form-input" id="hub-item-name" placeholder="e.g. Home, Toyota RAV4, CIBC Visa">
+      </div>
+    </div>
+    <div id="hub-item-asset-row" class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label" id="hub-item-asset-label">Estimated Value ($)</label>
+        <input type="number" class="form-input" id="hub-item-value" placeholder="0" min="0">
+      </div>
+      <div class="form-group" id="hub-item-debt-group">
+        <label class="form-label" id="hub-item-debt-label">Outstanding Balance ($)</label>
+        <input type="number" class="form-input" id="hub-item-debt" placeholder="0" min="0">
+      </div>
+    </div>
+    <div class="form-row" id="hub-item-notes-row" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" class="form-input" id="hub-item-notes" placeholder="">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('hub-item-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHubItem()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Trip Modal -->
 <div class="modal-overlay" id="trip-modal">
   <div class="modal" style="max-width:520px;">
@@ -2021,9 +1994,9 @@ function switchView(view) {
   if (view === 'networth') refreshNetWorth();
   if (view === 'savings') refreshGoals();
   if (view === 'transactions') { refreshTransactions(); updateReviewButton(); }
-  if (view === 'hub') loadHubInputs();
+  if (view === 'hub') { ensureHubItems(); renderHubGrids(); refreshNetWorthFromHub(); }
   if (view === 'holdings') refreshHoldings();
-  if (view === 'transfers') refreshTransfers();
+  if (view === 'transfers') { refreshTransfers(); refreshBankTransfers(); }
   if (view === 'trips') refreshTrips();
 }
 
@@ -2067,10 +2040,14 @@ function filterTx(f, el) {
 }
 
 function refreshTransactions() {
-  const filtered = state.transactions.filter(t => txFilter === 'all' || t.type === txFilter);
+  // Transfers and bank-transfers live in their own panel — exclude from main list
+  const filtered = state.transactions.filter(t =>
+    t.type !== 'transfer' && t.type !== 'bank-transfer' &&
+    (txFilter === 'all' || t.type === txFilter)
+  );
   const body = $('tx-body');
   if (filtered.length === 0) {
-    body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions here.</div></div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions here.</div></div></td></tr>`;
     return;
   }
   body.innerHTML = filtered.map(t => `
@@ -3305,7 +3282,14 @@ function normalizeDate(d) {
 
 function extractContact(desc, type) {
   if (!desc) return null;
-  // Simplii e-transfers: "INTERAC E-TRANSFER SEND Katie" / "INTERAC E-TRANSFER RECEIVE KATHERINE MYERS"
+
+  // ── Own inter-bank moves — these are NOT e-transfers to a person ────────
+  // Return null so they never appear in the e-transfers contact panel
+  const OWN_BANK = /e-transfer send kurt wealthsimple|wealthsimple investments inc?|e-transfer receive kurt hamlyn|investment wealthsimple/i;
+  if (OWN_BANK.test(desc)) return null;
+
+  // ── Person-to-person Simplii e-transfers ────────────────────────────────
+  // "INTERAC E-TRANSFER RECEIVE KATHERINE MYERS" / "INTERAC E-TRANSFER SEND Be Clean"
   const etIn  = desc.match(/INTERAC E-TRANSFER RECEIVE (.+)/i);
   const etOut = desc.match(/INTERAC E-TRANSFER SEND (.+)/i);
   if (etIn)  return { name: titleCase(etIn[1].trim()),  dir: 'in'  };
@@ -3328,9 +3312,8 @@ function guessCategory(desc) {
   if (/internet bill payment scotiabank.*expre/.test(d))     return 'Credit Card Payment';
   if (/internet bill payment/.test(d))                       return 'Credit Card Payment';
 
-  // ── Own-account transfers ──────────────────────────────────────────────
-  if (/wealthsimple investments|kurt wealthsimple/i.test(desc))     return 'Transfer';
-  if (/e-transfer receive kurt hamlyn/i.test(desc))                  return 'Transfer';
+  // ── Own inter-bank moves → Bank Transfer ────────────────────────────────
+  if (/wealthsimple investments|kurt wealthsimple|e-transfer receive kurt hamlyn/i.test(desc)) return 'Bank Transfer';
   if (/internal transfer|transfer_tf/.test(d))                       return 'Transfer';
 
   // ── E-transfers — auto-categorize by known contact names ──────────────
@@ -3405,65 +3388,216 @@ function guessCategory(desc) {
 // hub state lives inside state.hub — a flat object of named fields
 // Keys: homeValue, mortgage, car1Value, car1Loan, car2Value, car2Loan, studentLoan, loc
 
-function saveHubField(key, val) {
+// ═══════════════════════════════════
+// MY FINANCES HUB — Dynamic Items
+// ═══════════════════════════════════
+// state.hub.items = [{ id, type, name, value, debt, notes }]
+// type: 'property' | 'vehicle' | 'creditcard' | 'debt' | 'investment'
+
+function hubItems()      { return (state.hub && state.hub.items) || []; }
+function hubItemsByType(t){ return hubItems().filter(i => i.type === t); }
+
+function ensureHubItems() {
   if (!state.hub) state.hub = {};
-  state.hub[key] = parseFloat(val) || 0;
-  saveState();
+  if (!state.hub.items) {
+    // ── Migrate legacy flat fields to new items array on first load ──────
+    state.hub.items = [];
+    const h = state.hub;
+    const legacyMigrations = [
+      { cond: h.homeValue  > 0 || h.mortgage > 0,      item: { type:'property',   name:'Home',                   value: h.homeValue||0,   debt: h.mortgage||0   }},
+      { cond: h.car1Value  > 0 || h.car1Loan > 0,      item: { type:'vehicle',    name:'Vehicle 1',              value: h.car1Value||0,   debt: h.car1Loan||0   }},
+      { cond: h.car2Value  > 0 || h.car2Loan > 0,      item: { type:'vehicle',    name:'Vehicle 2',              value: h.car2Value||0,   debt: h.car2Loan||0   }},
+      { cond: h.studentLoan > 0,                        item: { type:'debt',       name:'Student Loan (NSLSC)',   value: 0,                debt: h.studentLoan||0}},
+      { cond: h.loc         > 0,                        item: { type:'debt',       name:'Line of Credit (Scotia)',value: 0,                debt: h.loc||0        }},
+      { cond: h.companyRrsp > 0,                        item: { type:'investment', name:'Company Match RRSP',     value: h.companyRrsp||0, debt: 0               }},
+    ];
+    legacyMigrations.forEach(m => {
+      if (m.cond) state.hub.items.push({ id: Date.now() + Math.random(), ...m.item });
+    });
+  }
 }
 
-function loadHubInputs() {
-  if (!state.hub) state.hub = {};
-  const fields = {
-    'hub-home-value':    'homeValue',
-    'hub-mortgage':      'mortgage',
-    'hub-car1-value':    'car1Value',
-    'hub-car1-loan':     'car1Loan',
-    'hub-car2-value':    'car2Value',
-    'hub-car2-loan':     'car2Loan',
-    'hub-student-loan':  'studentLoan',
-    'hub-loc':           'loc',
-    'hub-company-rrsp':  'companyRrsp'
+function openHubItemModal(type) {
+  const titles = {
+    property:   'Add Property',
+    vehicle:    'Add Vehicle',
+    creditcard: 'Add Credit Card',
+    debt:       'Add Debt / Loan',
+    investment: 'Add Investment Account',
   };
-  Object.entries(fields).forEach(([id, key]) => {
-    const el = $(id);
-    if (el && state.hub[key]) el.value = state.hub[key];
-  });
+  const assetLabels = {
+    property:   'Estimated Value ($)',
+    vehicle:    'Estimated Value ($)',
+    creditcard: null,   // no asset value for credit cards
+    debt:       null,
+    investment: 'Current Market Value ($)',
+  };
+  const debtLabels = {
+    property:   'Outstanding Mortgage ($)',
+    vehicle:    'Outstanding Loan ($)',
+    creditcard: 'Current Balance Owed ($)',
+    debt:       'Current Balance ($)',
+    investment: null,
+  };
+  const placeholders = {
+    property:   'e.g. Home, Cottage',
+    vehicle:    'e.g. Toyota RAV4, Honda Civic',
+    creditcard: 'e.g. CIBC Visa, TD MasterCard, Scotia Amex',
+    debt:       'e.g. Student Loan, Line of Credit',
+    investment: 'e.g. Company RRSP, FHSA',
+  };
+
+  $('hub-item-modal-title').textContent = titles[type] || 'Add Item';
+  $('hub-item-type').value = type;
+  $('hub-item-edit-id').value = '';
+  $('hub-item-name').value = '';
+  $('hub-item-name').placeholder = placeholders[type] || '';
+  $('hub-item-value').value = '';
+  $('hub-item-debt').value = '';
+
+  const assetLbl = assetLabels[type];
+  const debtLbl  = debtLabels[type];
+  const assetRow = $('hub-item-asset-row');
+  const debtGrp  = $('hub-item-debt-group');
+
+  // Show/hide asset value field
+  $('hub-item-asset-label').textContent = assetLbl || '';
+  $('hub-item-value').closest ? null : null;
+  if (!assetLbl) {
+    $('hub-item-value').parentElement.style.display = 'none';
+  } else {
+    $('hub-item-value').parentElement.style.display = '';
+    $('hub-item-asset-label').textContent = assetLbl;
+  }
+
+  // Show/hide debt field
+  if (!debtLbl) {
+    debtGrp.style.display = 'none';
+  } else {
+    debtGrp.style.display = '';
+    $('hub-item-debt-label').textContent = debtLbl;
+  }
+
+  openModal('hub-item-modal');
+}
+
+function editHubItem(id) {
+  ensureHubItems();
+  const item = hubItems().find(i => i.id === id);
+  if (!item) return;
+  openHubItemModal(item.type);
+  $('hub-item-edit-id').value = id;
+  $('hub-item-name').value  = item.name  || '';
+  $('hub-item-value').value = item.value || '';
+  $('hub-item-debt').value  = item.debt  || '';
+  $('hub-item-modal-title').textContent = 'Edit ' + ($('hub-item-modal-title').textContent.replace('Add ',''));
+}
+
+function saveHubItem() {
+  ensureHubItems();
+  const type  = $('hub-item-type').value;
+  const editId= $('hub-item-edit-id').value;
+  const name  = $('hub-item-name').value.trim();
+  const value = parseFloat($('hub-item-value').value) || 0;
+  const debt  = parseFloat($('hub-item-debt').value)  || 0;
+  if (!name) { showToast('Please enter a name.'); return; }
+
+  if (editId) {
+    const item = hubItems().find(i => String(i.id) === String(editId));
+    if (item) { item.name = name; item.value = value; item.debt = debt; }
+  } else {
+    state.hub.items.push({ id: Date.now(), type, name, value, debt });
+  }
+  saveState();
+  closeModal('hub-item-modal');
+  renderHubGrids();
   refreshNetWorthFromHub();
 }
 
-function hubVal(key) {
-  return (state.hub && state.hub[key]) ? parseFloat(state.hub[key]) || 0 : 0;
+function deleteHubItem(id) {
+  if (!confirm('Remove this account? This cannot be undone.')) return;
+  ensureHubItems();
+  state.hub.items = state.hub.items.filter(i => i.id !== id);
+  saveState();
+  renderHubGrids();
+  refreshNetWorthFromHub();
+}
+
+function renderHubGrids() {
+  ensureHubItems();
+
+  const iconMap = { property:'🏠', vehicle:'🚗', creditcard:'💳', debt:'🎓', investment:'📈' };
+  const emptyMsg = {
+    property:   'No properties added.',
+    vehicle:    'No vehicles added.',
+    creditcard: 'No credit cards added.',
+    debt:       'No debts or loans added.',
+    investment: 'No investment accounts added.',
+  };
+
+  const render = (gridId, type) => {
+    const grid = $(gridId);
+    if (!grid) return;
+    const items = hubItemsByType(type);
+    if (items.length === 0) {
+      grid.innerHTML = `<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:4px 0 16px;">${emptyMsg[type]}</div>`;
+      return;
+    }
+    grid.innerHTML = items.map(item => {
+      const equity   = item.value - item.debt;
+      const hasAsset = item.value > 0;
+      const hasDebt  = item.debt  > 0;
+      const equityBadge = (hasAsset || hasDebt)
+        ? `<div class="hub-equity-badge ${equity >= 0 ? 'pos':'neg'}" style="display:inline-block;margin-top:10px;">
+            ${type === 'creditcard' ? 'Balance: ' + fmt(item.debt) : 'Equity: ' + (equity>=0?'':'-') + fmt(Math.abs(equity))}
+           </div>` : '';
+      return `<div class="hub-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+          <div>
+            <div style="font-size:18px;margin-bottom:2px;">${iconMap[type]||'◈'}</div>
+            <div class="hub-card-label">${item.name}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="editHubItem(${item.id})">Edit</button>
+            <button class="btn btn-danger" style="font-size:10px;padding:3px 8px;" onclick="deleteHubItem(${item.id})">✕</button>
+          </div>
+        </div>
+        ${hasAsset ? `<div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Value: <span style="color:var(--text);">${fmt(item.value)}</span></div>` : ''}
+        ${hasDebt  ? `<div style="font-family:var(--mono);font-size:11px;color:var(--muted);">${type==='creditcard'?'Balance':'Balance owed'}: <span style="color:var(--red);">${fmt(item.debt)}</span></div>` : ''}
+        ${equityBadge}
+      </div>`;
+    }).join('');
+  };
+
+  render('hub-properties-grid',  'property');
+  render('hub-vehicles-grid',    'vehicle');
+  render('hub-creditcards-grid', 'creditcard');
+  render('hub-debts-grid',       'debt');
+  render('hub-investments-grid', 'investment');
+}
+
+function loadHubInputs() {
+  ensureHubItems();
+  renderHubGrids();
+  refreshNetWorthFromHub();
 }
 
 function refreshNetWorthFromHub() {
-  const h = state.hub || {};
-  const homeVal     = hubVal('homeValue');
-  const mortgage    = hubVal('mortgage');
-  const car1Val     = hubVal('car1Value');
-  const car1Loan    = hubVal('car1Loan');
-  const car2Val     = hubVal('car2Value');
-  const car2Loan    = hubVal('car2Loan');
-  const studentLoan = hubVal('studentLoan');
-  const loc         = hubVal('loc');
-  const companyRrsp = hubVal('companyRrsp');
+  ensureHubItems();
+  const items = hubItems();
 
-  // Equity badges
-  function setEquityBadge(id, assetVal, debtVal) {
-    const el = $(id);
-    if (!el) return;
-    if (assetVal === 0 && debtVal === 0) { el.style.display = 'none'; return; }
-    const equity = assetVal - debtVal;
-    el.style.display = 'inline-block';
-    el.className = 'hub-equity-badge ' + (equity >= 0 ? 'pos' : 'neg');
-    el.textContent = 'Equity: ' + (equity >= 0 ? '' : '-') + fmt(equity);
-  }
-  setEquityBadge('home-equity-badge', homeVal, mortgage);
-  setEquityBadge('car1-equity-badge', car1Val, car1Loan);
-  setEquityBadge('car2-equity-badge', car2Val, car2Loan);
+  // Build hub assets and liabilities from dynamic items
+  const hubAssets = items
+    .filter(i => i.value > 0)
+    .map((i, idx) => ({ id: -(100 + idx), name: i.name, type: hubTypeLabel(i.type), value: i.value }));
 
-  // Summary totals
-  const totalAssets = homeVal + car1Val + car2Val + companyRrsp;
-  const totalDebts  = mortgage + car1Loan + car2Loan + studentLoan + loc;
+  const hubLiabilities = items
+    .filter(i => i.debt > 0)
+    .map((i, idx) => ({ id: -(200 + idx), name: i.type === 'creditcard' ? i.name + ' (CC)' : i.name + ' loan/balance', type: hubDebtTypeLabel(i.type), value: i.debt }));
+
+  // Summary totals for hub panel
+  const totalAssets = hubAssets.reduce((s, a) => s + a.value, 0);
+  const totalDebts  = hubLiabilities.reduce((s, l) => s + l.value, 0);
   const netEquity   = totalAssets - totalDebts;
 
   const ta = $('hub-total-assets');
@@ -3472,31 +3606,31 @@ function refreshNetWorthFromHub() {
   if (ta) ta.textContent = fmt(totalAssets);
   if (td) td.textContent = fmt(totalDebts);
   if (ne) {
-    ne.textContent = (netEquity >= 0 ? '' : '-') + fmt(netEquity);
+    ne.textContent = (netEquity >= 0 ? '' : '-') + fmt(Math.abs(netEquity));
     ne.className = 'stat-value ' + (netEquity >= 0 ? 'positive' : 'negative');
     ne.style.fontSize = '22px';
   }
 
-  // ── Sync into state.assets / state.liabilities so Net Worth page reflects these ──
-  // We use reserved IDs (negative numbers) to identify hub-managed entries
-  const hubAssets = [
-    { id: -1, name: 'Home',           type: 'Real Estate', value: homeVal },
-    { id: -2, name: 'Vehicle 1',      type: 'Vehicle',     value: car1Val },
-    { id: -3, name: 'Vehicle 2',      type: 'Vehicle',     value: car2Val },
-    { id: -6, name: 'Company RRSP',   type: 'Investment',  value: companyRrsp },
-  ].filter(a => a.value > 0);
+  // Sync into Net Worth — replace all hub-managed entries (negative IDs ≤ -100)
+  state.assets      = state.assets.filter(a => a.id > 0 || (a.id > -100 && a.id < -9)).concat(hubAssets);
+  state.liabilities = state.liabilities.filter(l => l.id > 0 || (l.id > -100 && l.id < -9)).concat(hubLiabilities);
+  // Also clean up old holdings-synced assets that may conflict (ids -10 to -99)
+  // holdings uses -10 to -99; hub now uses -100 and below — no conflict
+}
 
-  const hubLiabilities = [
-    { id: -1, name: 'Mortgage',              type: 'Mortgage',                    value: mortgage },
-    { id: -2, name: 'Vehicle 1 Loan',        type: 'Auto Loan',                   value: car1Loan },
-    { id: -3, name: 'Vehicle 2 Loan',        type: 'Auto Loan',                   value: car2Loan },
-    { id: -4, name: 'Student Loan (NSLSC)',  type: 'Government Student Loan',     value: studentLoan },
-    { id: -5, name: 'Line of Credit (Scotia)', type: 'Line of Credit',            value: loc },
-  ].filter(l => l.value > 0);
+function hubTypeLabel(type) {
+  return { property:'Real Estate', vehicle:'Vehicle', creditcard:'Credit Card', debt:'Loan/Debt', investment:'Investment' }[type] || type;
+}
+function hubDebtTypeLabel(type) {
+  return { property:'Mortgage', vehicle:'Auto Loan', creditcard:'Credit Card', debt:'Loan', investment:'N/A' }[type] || type;
+}
 
-  // Remove old hub entries (negative IDs) and replace with fresh ones
-  state.assets      = state.assets.filter(a => a.id > 0).concat(hubAssets);
-  state.liabilities = state.liabilities.filter(l => l.id > 0).concat(hubLiabilities);
+// Legacy stub — kept so old oninput calls don't break if any remain in DOM
+function saveHubField(key, val) {
+  ensureHubItems();
+  if (!state.hub) state.hub = {};
+  state.hub[key] = parseFloat(val) || 0;
+  saveState();
 }
 
 function toggleGuide() {
@@ -3774,13 +3908,27 @@ function refreshHoldings() {
 // TRANSFERS TAB
 // ═══════════════════════════════════
 
+function promoteToTransaction(id) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) return;
+  t.type = 'expense';  // default to expense — user can edit if needed
+  if (!t.category || t.category === 'Transfer' || t.category === 'Credit Card Payment') {
+    t.category = 'Other';
+  }
+  saveState();
+  refreshTransfers();
+  refreshTransactions();
+  showToast('Moved to transactions as expense. Change category as needed.');
+}
+
 function refreshTransfers() {
   // All e-transfer transactions (those with a contact attribute)
-  const allXfer = state.transactions.filter(t => t.contact);
+  // Only e-transfers to/from OTHER people — own bank moves use 'bank-transfer'
+  const allXfer = state.transactions.filter(t => t.type === 'transfer' && t.contact);
 
   // Stats
-  const received = allXfer.filter(t => t.contact.dir === 'in');
-  const sent     = allXfer.filter(t => t.contact.dir === 'out');
+  const received = allXfer.filter(t => t.contact && t.contact.dir === 'in');
+  const sent     = allXfer.filter(t => t.contact && t.contact.dir === 'out');
   const totalIn  = received.reduce((s,t) => s + t.amount, 0);
   const totalOut = sent.reduce((s,t)     => s + t.amount, 0);
   const net      = totalIn - totalOut;
@@ -3788,8 +3936,8 @@ function refreshTransfers() {
   const set = (id, v) => { const el = $(id); if(el) el.textContent = v; };
   set('xfer-total-in',  fmt(totalIn));
   set('xfer-total-out', fmt(totalOut));
-  set('xfer-count-in',  received.length + ' transfer' + (received.length !== 1 ? 's' : ''));
-  set('xfer-count-out', sent.length + ' transfer' + (sent.length !== 1 ? 's' : ''));
+  set('xfer-count-in',  received.length + ' e-transfer' + (received.length !== 1 ? 's' : ''));
+  set('xfer-count-out', sent.length + ' e-transfer' + (sent.length !== 1 ? 's' : ''));
   const netEl = $('xfer-net');
   if (netEl) {
     netEl.textContent = (net >= 0 ? '+' : '') + fmt(net);
@@ -3798,7 +3946,7 @@ function refreshTransfers() {
 
   // By contact summary
   const contacts = {};
-  allXfer.forEach(t => {
+  allXfer.filter(t => t.contact).forEach(t => {
     const name = t.contact.name;
     if (!contacts[name]) contacts[name] = { in: 0, out: 0, count: 0 };
     contacts[name][t.contact.dir] += t.amount;
@@ -3809,7 +3957,7 @@ function refreshTransfers() {
   const cc = $('xfer-contacts');
   if (cc) {
     if (contactRows.length === 0) {
-      cc.innerHTML = `<div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfer contacts found. Import Simplii transactions to see contacts.</div></div>`;
+      cc.innerHTML = `<div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfer contacts yet. Import Simplii transactions — sends and receives to other people will appear here.</div></div>`;
     } else {
       cc.innerHTML = contactRows.map(([name, d]) => `
         <div class="bill-row" style="gap:12px;">
@@ -3827,32 +3975,68 @@ function refreshTransfers() {
   const dir  = ($('xfer-filter-dir') || {value:'all'}).value;
   const sort = ($('xfer-sort') || {value:'date-desc'}).value;
 
-  let rows = allXfer.filter(t => dir === 'all' || t.contact.dir === dir);
+  let rows = allXfer.filter(t => dir === 'all' || (t.contact && t.contact.dir === dir));
   if (sort === 'date-desc')    rows.sort((a,b) => b.date.localeCompare(a.date));
   if (sort === 'date-asc')     rows.sort((a,b) => a.date.localeCompare(b.date));
   if (sort === 'amount-desc')  rows.sort((a,b) => b.amount - a.amount);
   if (sort === 'amount-asc')   rows.sort((a,b) => a.amount - b.amount);
-  if (sort === 'contact')      rows.sort((a,b) => a.contact.name.localeCompare(b.contact.name));
+  if (sort === 'contact')      rows.sort((a,b) => (a.contact?.name||'').localeCompare(b.contact?.name||''));
 
   const body = $('xfer-body');
   if (!body) return;
   if (rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:30px;"><div class="empty-text">No e-transfers found.</div></div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px;"><div class="empty-text">No transfers found.</div></div></td></tr>`;
     return;
   }
-  body.innerHTML = rows.map(t => `
-    <tr>
+  body.innerHTML = rows.map(t => {
+    const dir = t.contact?.dir;
+    const dirLabel = dir === 'in' ? '↙ Received' : '↗ Sent';
+    const dirColor = dir === 'in' ? 'var(--accent)' : 'var(--red)';
+    const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+    return `<tr>
       <td><span class="highlight-val">${t.date}</span></td>
-      <td style="font-weight:500;">${t.contact.name}</td>
+      <td style="font-weight:500;font-size:12px;">${t.contact?.name||'—'}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.desc}</td>
+      <td><span style="font-family:var(--mono);font-size:11px;color:${dirColor};">${dirLabel}</span></td>
+      <td class="tx-amount ${dir==='in'?'income':'expense'}" style="font-family:var(--mono);">${dir==='in'?'+':'-'}${fmt(t.amount)}</td>
+      <td>${acct ? `<span class="account-pill">${acct}</span>` : ''}</td>
+      <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Move to Transactions</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// BANK TRANSFERS
+// ═══════════════════════════════════
+
+function refreshBankTransfers() {
+  const all = state.transactions.filter(t => t.type === 'bank-transfer');
+  const sort = ($('bank-xfer-sort') || {value:'date-desc'}).value;
+
+  let rows = [...all];
+  if (sort === 'date-desc')   rows.sort((a,b) => b.date.localeCompare(a.date));
+  if (sort === 'date-asc')    rows.sort((a,b) => a.date.localeCompare(b.date));
+  if (sort === 'amount-desc') rows.sort((a,b) => b.amount - a.amount);
+  if (sort === 'amount-asc')  rows.sort((a,b) => a.amount - b.amount);
+
+  const body = $('bank-xfer-body');
+  if (!body) return;
+
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state" style="padding:24px;"><div class="empty-text">No bank transfers yet. Money you move between your own accounts (Simplii ↔ Wealthsimple) will appear here — separate from e-transfers to other people.</div></div></td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.map(t => {
+    const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+    return `<tr>
+      <td><span class="highlight-val">${t.date}</span></td>
       <td style="font-size:12px;color:var(--muted);">${t.desc}</td>
-      <td>
-        <span style="font-family:var(--mono);font-size:11px;color:${t.contact.dir==='in'?'var(--accent)':'var(--red)'};">
-          ${t.contact.dir==='in'?'↙ Received':'↗ Sent'}
-        </span>
-      </td>
-      <td class="tx-amount ${t.contact.dir==='in'?'income':'expense'}">${t.contact.dir==='in'?'+':'-'}${fmt(t.amount)}</td>
-      <td>${t.account ? `<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')}</span>` : ''}</td>
-    </tr>`).join('');
+      <td class="tx-amount transfer" style="font-family:var(--mono);">⇄ ${fmt(t.amount)}</td>
+      <td>${acct ? `<span class="account-pill">${acct}</span>` : ''}</td>
+      <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Move to Transactions</button></td>
+    </tr>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════
@@ -4069,36 +4253,47 @@ function saveReviewAndNext() {
 function reconcileTransfers() {
   const txs = state.transactions;
 
-  // Gather all transactions that are either already 'transfer' or could be one
-  // "Could be" = came in as income/expense but description matches known transfer patterns
-  const SIMPLII_WS_OUT = /e-transfer send kurt wealthsimple|wealthsimple investments/i;
-  const SIMPLII_WS_IN  = /e-transfer receive kurt hamlyn/i;
-  const WS_EFT         = /bank transfer|eft/i;
+  // ── Patterns that identify YOUR OWN inter-bank movements ─────────────
+  // These go to 'bank-transfer' — not e-transfers, not expenses
+  const OWN_BANK = /e-transfer send kurt wealthsimple|wealthsimple investments inc|e-transfer receive kurt hamlyn|investment wealthsimple/i;
 
-  // Tag by description if not already tagged
+  // ── Patterns that are CIBC/Scotiabank/TD credit card payments ─────────
+  // These stay as 'transfer' with category 'Credit Card Payment'
+  const CC_PAYMENT = /payment thank you|paiemen t merci|internet bill payment/i;
+
   txs.forEach(t => {
-    if (t.type === 'transfer' || t.type === 'invest') return;
+    if (t.type === 'invest') return;  // never reclassify investment trades
     const d = t.desc || '';
-    if (SIMPLII_WS_OUT.test(d) || SIMPLII_WS_IN.test(d)) {
+
+    if (OWN_BANK.test(d)) {
+      t.type = 'bank-transfer';
+      t.category = 'Bank Transfer';
+      return;
+    }
+    if (CC_PAYMENT.test(d)) {
       t.type = 'transfer';
+      t.category = 'Credit Card Payment';
+      return;
     }
   });
 
-  // Now do amount+date matching for anything still marked transfer on one side
-  // Find all transfer-tagged txs and try to match their counterpart
-  const candidates = txs.filter(t => t.type === 'transfer');
-
-  candidates.forEach(a => {
-    // Look for a transaction on the other side: same amount, within 3 days, opposite sign context
+  // ── Amount+date matching: find the other side of a bank-transfer ──────
+  // If we've tagged one leg as bank-transfer, find the matching leg
+  // (same amount ±2¢, within 3 days) and tag it too
+  const bankCandidates = txs.filter(t => t.type === 'bank-transfer');
+  bankCandidates.forEach(a => {
     const aDate = new Date(a.date + 'T12:00:00');
     const match = txs.find(b => {
       if (b.id === a.id) return false;
-      if (b.type === 'transfer') return false; // already handled
+      if (b.type === 'bank-transfer' || b.type === 'invest') return false;
       const bDate = new Date(b.date + 'T12:00:00');
       const dayDiff = Math.abs((aDate - bDate) / 86400000);
       return Math.abs(b.amount - a.amount) < 0.02 && dayDiff <= 3;
     });
-    if (match) match.type = 'transfer';
+    if (match) {
+      match.type = 'bank-transfer';
+      match.category = 'Bank Transfer';
+    }
   });
 
   saveState();
@@ -4129,6 +4324,7 @@ function loadState() {
       if (!state.holdings) state.holdings = [];
       if (!state.bills)    state.bills    = [];
       if (!state.trips)    state.trips    = [];
+      if (!state.hub)      state.hub      = {};
       return true;
     }
   } catch(e) {
@@ -4221,42 +4417,70 @@ if (!hadSavedData) {
 // ── Migrate existing data to apply all current rules retroactively ────────
 function migrateExistingData() {
   let changed = 0;
+
+  // Patterns for own inter-bank moves — must become 'bank-transfer'
+  const OWN_BANK    = /e-transfer send kurt wealthsimple|wealthsimple investments inc?|e-transfer receive kurt hamlyn|investment wealthsimple/i;
+  // Patterns for credit card payments — must become type='transfer', cat='Credit Card Payment'
+  const CC_PAYMENT  = /payment thank you|paiemen t merci|internet bill payment/i;
+  // Patterns for person-to-person e-transfers — stay as type='transfer' WITH a contact
+  const ETRANSFER   = /interac e-transfer (send|receive)/i;
+
   state.transactions.forEach(t => {
-    // Re-extract contact if missing
-    if (!t.contact) {
-      const c = extractContact(t.desc, t.type);
+    if (t.type === 'invest') return;  // never touch investment trades
+
+    const d = t.desc || '';
+
+    // ── Step 1: Re-extract contact name for e-transfer rows ───────────────
+    if (!t.contact && ETRANSFER.test(d)) {
+      const c = extractContact(d, t.type);
       if (c) { t.contact = c; changed++; }
     }
 
-    // Re-run category: update 'Other' → proper category or Unknown
-    // But don't override manually-reviewed ones (heuristic: skip if already a specific cat)
-    const genericCats = new Set(['Other', null, undefined, '']);
-    if (genericCats.has(t.category)) {
-      t.category = guessCategory(t.desc);
-      changed++;
+    // ── Step 2: Classify type correctly based on description ──────────────
+    if (OWN_BANK.test(d)) {
+      // Own bank-to-bank move — goes to Bank Transfers panel, NOT e-transfers
+      if (t.type !== 'bank-transfer' || t.category !== 'Bank Transfer') {
+        t.type     = 'bank-transfer';
+        t.category = 'Bank Transfer';
+        t.contact  = null;  // remove contact — this is not a person-to-person transfer
+        changed++;
+      }
+      return;
     }
 
-    // Re-run credit card payment detection for type=transfer that should be CC Payment
-    if (t.type === 'transfer' && !t.category) {
-      t.category = guessCategory(t.desc);
-      changed++;
+    if (CC_PAYMENT.test(d)) {
+      if (t.type !== 'transfer' || t.category !== 'Credit Card Payment') {
+        t.type     = 'transfer';
+        t.category = 'Credit Card Payment';
+        changed++;
+      }
+      return;
     }
 
-    // Tag CIBC payment-thank-you rows as Credit Card Payment type=transfer
-    if (/payment thank you|paiemen t merci/i.test(t.desc)) {
-      t.type = 'transfer';
-      t.category = 'Credit Card Payment';
-      changed++;
+    // ── Step 3: Person-to-person e-transfers — keep as type='transfer' ────
+    if (ETRANSFER.test(d)) {
+      if (t.type !== 'transfer') {
+        t.type = 'transfer';
+        changed++;
+      }
+      // Re-guess category for e-transfers to people
+      if (!t.category || t.category === 'Other' || t.category === 'Unknown' || t.category === 'Transfer' || t.category === 'Bank Transfer') {
+        t.category = guessCategory(d);
+        changed++;
+      }
+      return;
     }
 
-    // Tag OBP_OUT (WS bill payments) as Credit Card Payment
-    if (/bill payment|obp.?out/i.test(t.desc) && t.type === 'expense') {
-      t.category = 'Credit Card Payment';
+    // ── Step 4: For all other rows — fill in missing/generic categories ───
+    const genericCats = new Set(['Other', null, undefined, '', 'Transfer', 'Bank Transfer']);
+    // Only re-categorize if it's a generic catch-all AND not already a clean type
+    if (genericCats.has(t.category) && t.type !== 'bank-transfer' && t.type !== 'transfer') {
+      t.category = guessCategory(d);
       changed++;
     }
   });
 
-  // Re-run transfer reconciliation on all data
+  // Re-run full reconciliation to catch any missed amount+date matches
   reconcileTransfers();
 
   if (changed > 0) {
@@ -4266,7 +4490,7 @@ function migrateExistingData() {
 }
 
 refreshDashboard();
-loadHubInputs();
+ensureHubItems(); renderHubGrids(); refreshNetWorthFromHub();
 if (state.holdings && state.holdings.length) syncHoldingsToNetWorth();
 migrateExistingData();
 updateReviewButton();
