@@ -1196,24 +1196,52 @@
         </div>
       </div>
 
+      <!-- Type filter tabs -->
       <div class="tab-row">
         <div class="tab active" onclick="filterTx('all', this)">All</div>
         <div class="tab" onclick="filterTx('income', this)">Income</div>
         <div class="tab" onclick="filterTx('expense', this)">Expenses</div>
+        <div class="tab" onclick="filterTx('invest', this)">Investing</div>
       </div>
 
-      <div class="chart-card">
+      <!-- Sort + search controls -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+        <input type="text" class="form-input" id="tx-search" placeholder="Search description…" style="flex:1;min-width:160px;font-size:12px;" oninput="refreshTransactions()">
+        <select class="form-select" id="tx-filter-cat" style="width:auto;font-size:12px;" onchange="refreshTransactions()">
+          <option value="">All Categories</option>
+        </select>
+        <select class="form-select" id="tx-filter-acct" style="width:auto;font-size:12px;" onchange="refreshTransactions()">
+          <option value="">All Accounts</option>
+        </select>
+        <select class="form-select" id="tx-sort" style="width:auto;font-size:12px;" onchange="refreshTransactions()">
+          <option value="date-desc">Date ↓ (newest)</option>
+          <option value="date-asc">Date ↑ (oldest)</option>
+          <option value="amount-desc">Amount ↓</option>
+          <option value="amount-asc">Amount ↑</option>
+          <option value="desc-asc">Description A–Z</option>
+          <option value="cat-asc">Category A–Z</option>
+        </select>
+      </div>
+
+      <div class="chart-card" style="padding:0;overflow:hidden;">
         <table class="tx-table">
           <thead>
             <tr>
-              <th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Account</th><th></th>
+              <th onclick="setTxSort('date-desc','date-asc')" style="cursor:pointer;">Date ↕</th>
+              <th onclick="setTxSort('desc-asc','desc-desc')" style="cursor:pointer;">Description ↕</th>
+              <th onclick="setTxSort('cat-asc','cat-desc')" style="cursor:pointer;">Category ↕</th>
+              <th>Type</th>
+              <th onclick="setTxSort('amount-desc','amount-asc')" style="cursor:pointer;">Amount ↕</th>
+              <th onclick="setTxSort('acct-asc','acct-desc')" style="cursor:pointer;">Account ↕</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tx-body">
-            <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>
           </tbody>
         </table>
       </div>
+      <div id="tx-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;text-align:right;"></div>
     </div>
 
     <!-- ═══════════ BUDGET ═══════════ -->
@@ -1313,7 +1341,7 @@
               <div class="bank-badge active">🍁 Wealthsimple</div>
               <div class="bank-badge active">🟢 Simplii</div>
               <div class="bank-badge active">🔴 Scotiabank</div>
-              <div class="bank-badge active">🟩 TD Bank</div>
+              <div class="bank-badge active">🟩 TD Bank / Aeroplan</div>
               <div class="bank-badge active">🔵 CIBC</div>
               <div class="bank-badge active">☀️ Sun Life</div>
               <div class="bank-badge">🏦 RBC</div>
@@ -1330,7 +1358,8 @@
           <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
-          <strong style="color:var(--accent)">🟩 TD Credit Card:</strong> EasyWeb → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
+          <strong style="color:var(--accent)">🟩 TD Credit Card (with headers):</strong> EasyWeb → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
+          <strong style="color:var(--accent)">🟩 TD Aeroplan Visa:</strong> Online Banking → Credit Card → View account activity → <strong style="color:var(--text)">Download → CSV</strong> (select each date range, drop all files at once)<br>
           <strong style="color:var(--accent)">🔵 CIBC Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download → CSV</strong><br>
           <strong style="color:var(--accent)">☀️ Sun Life RRSP:</strong> mysunlife.ca → My money → View account activity → <strong style="color:var(--text)">Export to CSV</strong>
         </div>
@@ -1338,8 +1367,9 @@
 
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" style="margin-bottom:12px;">
         <div class="drop-icon">⇡</div>
-        <div class="drop-label">Drop any bank CSV here or <span>click to browse</span></div>
-        <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSVFile(this.files[0])">
+        <div class="drop-label">Drop one or more bank CSVs here or <span>click to browse</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Multiple files OK — useful for TD Aeroplan exports split by date range</div>
+        <input type="file" id="csv-file" accept=".csv" multiple style="display:none" onchange="handleFileList(this.files)">
       </div>
 
       <div id="detect-banner" style="display:none; margin-bottom:12px; padding:12px 18px; border-radius:10px; background:rgba(181,242,58,0.08); border:1px solid rgba(181,242,58,0.25); font-size:13px; align-items:center; gap:10px;">
@@ -2006,7 +2036,8 @@ let state = {
   hub: {},
   bills: [],
   holdings: [],  // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
-  trips: []
+  trips: [],
+  vendorRules: {},  // normDesc(vendor) → category, persisted for future imports
 };
 
 let txFilter = 'all';
@@ -2086,6 +2117,67 @@ function deleteTransaction(id) {
   refreshDashboard();
 }
 
+function quickCatEdit(id, pillEl) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) return;
+  // Build a tiny inline select replacing the pill
+  const sel = document.createElement('select');
+  sel.className = 'form-select';
+  sel.style.cssText = 'font-size:11px;padding:2px 6px;width:auto;';
+  CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = c;
+    if (c === t.category) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  pillEl.replaceWith(sel);
+  sel.focus();
+
+  const commit = () => {
+    const newCat = sel.value;
+    const oldCat = t.category;
+    t.category = newCat;
+
+    // Count similar transactions (same normDesc)
+    const key = normDesc(t.desc);
+    const similar = state.transactions.filter(x =>
+      x.id !== id && normDesc(x.desc) === key && x.category !== newCat
+    );
+
+    if (similar.length > 0 && newCat !== oldCat) {
+      const apply = confirm(
+        `Apply "${newCat}" to all ${similar.length + 1} transactions from "${t.desc.slice(0,40)}"?
+
+This will also remember this rule for future imports.`
+      );
+      if (apply) {
+        similar.forEach(x => { x.category = newCat; });
+        // Save vendor rule for future imports
+        if (!state.vendorRules) state.vendorRules = {};
+        state.vendorRules[key] = newCat;
+        showToast(`"${newCat}" applied to ${similar.length + 1} transactions & saved for future imports.`);
+      } else {
+        // Still save the rule for future imports even if not bulk-applying
+        if (!state.vendorRules) state.vendorRules = {};
+        state.vendorRules[key] = newCat;
+        showToast(`Category saved. Rule remembered for future imports.`);
+      }
+    } else if (newCat !== oldCat) {
+      // Save rule even for single transactions
+      if (!state.vendorRules) state.vendorRules = {};
+      state.vendorRules[key] = newCat;
+    }
+
+    saveState();
+    refreshTransactions();
+    refreshDashboard();
+    updateReviewButton();
+  };
+
+  sel.addEventListener('change', commit);
+  sel.addEventListener('blur', () => { setTimeout(commit, 100); });
+}
+
 function filterTx(f, el) {
   txFilter = f;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -2094,31 +2186,91 @@ function filterTx(f, el) {
   updateReviewButton();
 }
 
+function setTxSort(a, b) {
+  const sel = $('tx-sort');
+  if (!sel) return;
+  sel.value = sel.value === a ? b : a;
+  refreshTransactions();
+}
+
+function populateTxFilters() {
+  // Populate category and account dropdowns from actual data
+  const cats  = [...new Set(state.transactions.filter(t=>t.category && t.type!=='transfer' && t.type!=='bank-transfer').map(t=>t.category))].sort();
+  const accts = [...new Set(state.transactions.filter(t=>t.account && t.type!=='transfer' && t.type!=='bank-transfer').map(t=>t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')))].sort();
+  const catSel  = $('tx-filter-cat');
+  const acctSel = $('tx-filter-acct');
+  if (catSel) {
+    const prev = catSel.value;
+    catSel.innerHTML = '<option value="">All Categories</option>' + cats.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
+  }
+  if (acctSel) {
+    const prev = acctSel.value;
+    acctSel.innerHTML = '<option value="">All Accounts</option>' + accts.map(a=>`<option value="${a}" ${a===prev?'selected':''}>${a}</option>`).join('');
+  }
+}
+
 function refreshTransactions() {
-  // Transfers and bank-transfers live in their own panel — exclude from main list
-  const filtered = state.transactions.filter(t =>
+  populateTxFilters();
+
+  // Exclude transfer types from main list
+  let filtered = state.transactions.filter(t =>
     t.type !== 'transfer' && t.type !== 'bank-transfer' &&
     (txFilter === 'all' || t.type === txFilter)
   );
+
+  // Search filter
+  const search = (($('tx-search')||{}).value||'').toLowerCase().trim();
+  if (search) filtered = filtered.filter(t => (t.desc||'').toLowerCase().includes(search));
+
+  // Category filter
+  const catF = (($('tx-filter-cat')||{}).value||'');
+  if (catF) filtered = filtered.filter(t => t.category === catF);
+
+  // Account filter
+  const acctF = (($('tx-filter-acct')||{}).value||'');
+  if (acctF) filtered = filtered.filter(t => {
+    const a = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+    return a === acctF;
+  });
+
+  // Sort
+  const sort = (($('tx-sort')||{}).value) || 'date-desc';
+  if (sort === 'date-desc')   filtered.sort((a,b) => b.date.localeCompare(a.date));
+  if (sort === 'date-asc')    filtered.sort((a,b) => a.date.localeCompare(b.date));
+  if (sort === 'amount-desc') filtered.sort((a,b) => b.amount - a.amount);
+  if (sort === 'amount-asc')  filtered.sort((a,b) => a.amount - b.amount);
+  if (sort === 'desc-asc')    filtered.sort((a,b) => (a.desc||'').localeCompare(b.desc||''));
+  if (sort === 'desc-desc')   filtered.sort((a,b) => (b.desc||'').localeCompare(a.desc||''));
+  if (sort === 'cat-asc')     filtered.sort((a,b) => (a.category||'').localeCompare(b.category||''));
+  if (sort === 'cat-desc')    filtered.sort((a,b) => (b.category||'').localeCompare(a.category||''));
+  if (sort === 'acct-asc')    filtered.sort((a,b) => (a.account||'').localeCompare(b.account||''));
+  if (sort === 'acct-desc')   filtered.sort((a,b) => (b.account||'').localeCompare(a.account||''));
+
+  const countEl = $('tx-count');
+  if (countEl) countEl.textContent = filtered.length + ' transaction' + (filtered.length !== 1 ? 's' : '');
+
   const body = $('tx-body');
   if (filtered.length === 0) {
-    body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions here.</div></div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions match.</div></div></td></tr>`;
     return;
   }
-  body.innerHTML = filtered.map(t => `
-    <tr>
+  body.innerHTML = filtered.map(t => {
+    const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+    return `<tr>
       <td><span class="highlight-val">${t.date}</span></td>
       <td>
-        <div>${t.desc}</div>
+        <div style="font-size:13px;">${t.desc}</div>
         ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}</div>` : ''}
       </td>
-      <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'Unknown'}</span></td>
-      <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
-      <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
-      <td>${t.account ? `<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')}</span>` : ''}</td>
+      <td>
+        <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
+      </td>
+      <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':'var(--red)'}">${t.type}</td>
+      <td class="tx-amount ${t.type==='invest'?'invest':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':'+'}${fmt(t.amount)}</td>
+      <td>${acct ? `<span class="account-pill">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════
@@ -2167,7 +2319,7 @@ function renderCalendar() {
   // Build day-keyed maps from actual transactions this month
   const txByDay = {};
   state.transactions.forEach(t => {
-    // Only show real income/expense on calendar — no transfers or bank moves
+    // Only show real income/expense on calendar — no transfers, bank moves, or invest trades
     if (t.type !== 'income' && t.type !== 'expense') return;
     const d = new Date(t.date + 'T12:00:00');
     if (d.getMonth() === calMonth && d.getFullYear() === calYear) {
@@ -2672,21 +2824,25 @@ function refreshDashboard() {
   $('dash-balance').textContent = (balance >= 0 ? '+' : '-') + fmt(balance);
   $('dash-balance').className = 'stat-value ' + (balance >= 0 ? 'positive' : 'negative');
 
-  // Recent transactions
-  const recent = state.transactions.slice(0, 8);
+  // Recent transactions — newest first, exclude transfers and invest trades
+  const recent = [...state.transactions]
+    .filter(t => t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest')
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 12);
   const rb = $('recent-tx-body');
   if (recent.length === 0) {
     rb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>`;
   } else {
-    rb.innerHTML = recent.map(t => `
-      <tr>
+    rb.innerHTML = recent.map(t => {
+      const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+      return `<tr>
         <td><span class="highlight-val">${t.date}</span></td>
         <td>${t.desc}</td>
-        <td><span class="category-pill">${t.category}</span></td>
-        <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
-        <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
-      </tr>
-    `).join('');
+        <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'—'}</span></td>
+        <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
+        <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+      </tr>`;
+    }).join('');
   }
 
   // Category Chart
@@ -3330,7 +3486,7 @@ const BANK_PROFILES = [
     exportPath: 'EasyWeb → Credit Card account → Download transactions → CSV',
     detect(headers) {
       const h = headers.map(x => x.toLowerCase().trim());
-      // TD credit card: Transaction Date, Posting Date, Description, Amount
+      // TD credit card with headers: Transaction Date, Posting Date, Description, Amount
       return h.some(x => x.includes('transaction date') || x.includes('posting date'))
           && h.some(x => x === 'amount' || x.includes('amount'));
     },
@@ -3345,6 +3501,42 @@ const BANK_PROFILES = [
         const synthetic = isNaN(raw) ? 0 : -raw;
         return { date: r[di], desc: r[dsi], rawAmt: String(synthetic) };
       });
+    }
+  },
+
+  {
+    // TD Aeroplan Visa / TD Visa "Account Activity" download — NO header row
+    // 5 columns: Date (MM/DD/YYYY), Description, Debit, Credit, Balance
+    // Debit col = purchase (expense). Credit col = payment/refund (transfer/income).
+    name: 'TD Aeroplan Visa',
+    icon: '🟩',
+    accountType: 'Credit Card',
+    exportPath: 'TD Online Banking → Credit Card → View account activity → Download → CSV',
+    detect(headers) {
+      // No header row — first row IS data. Detect by MM/DD/YYYY pattern in col0 and numeric balance in col4.
+      if (headers.length < 5) return false;
+      const col0 = (headers[0] || '').trim();
+      const col4 = (headers[4] || '').trim().replace(/[$,]/g, '');
+      return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(col0) && !isNaN(parseFloat(col4));
+    },
+    parse(rows, headers) {
+      // headers IS the first data row — include it back in the set
+      const allRows = [headers, ...rows];
+      return allRows.map(r => {
+        const rawDate = (r[0] || '').trim();
+        const desc    = (r[1] || '').trim();
+        const debit   = parseFloat((r[2] || '').replace(/[$,]/g, '')) || 0;
+        const credit  = parseFloat((r[3] || '').replace(/[$,]/g, '')) || 0;
+        if (!rawDate || !desc) return null;
+        // Convert MM/DD/YYYY → YYYY-MM-DD
+        const dp = rawDate.split('/');
+        if (dp.length !== 3) return null;
+        const date = `${dp[2]}-${dp[0].padStart(2,'0')}-${dp[1].padStart(2,'0')}`;
+        // Credit col = payment coming in (tag as transfer), Debit col = charge (expense)
+        const synthetic = credit > 0 ? credit : -debit;
+        const hint = credit > 0 ? 'transfer' : 'expense';
+        return { date, desc, rawAmt: String(synthetic), hint };
+      }).filter(Boolean);
     }
   },
 
@@ -3472,8 +3664,21 @@ function handleDragLeave() { $('drop-zone').classList.remove('dragover'); }
 function handleDrop(e) {
   e.preventDefault();
   $('drop-zone').classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f) handleCSVFile(f);
+  const files = e.dataTransfer.files;
+  if (files && files.length > 0) handleFileList(files);
+}
+
+// Handle one or many files
+function handleFileList(files) {
+  const csvFiles = [...files].filter(f => f.name.toLowerCase().endsWith('.csv'));
+  if (csvFiles.length === 0) { showToast('Please upload CSV files.'); return; }
+  if (csvFiles.length === 1) {
+    // Single file: use the existing preview flow
+    handleCSVFile(csvFiles[0]);
+  } else {
+    // Multiple files: silent batch import — no preview
+    importMultipleCSVFiles(csvFiles);
+  }
 }
 
 function parseCSVLine(line) {
@@ -3547,6 +3752,115 @@ function renderCSVPreview() {
 
 function makeDupeKey(date, desc, amount) {
   return `${normalizeDate(date)}|${desc.toLowerCase().trim()}|${parseFloat(amount).toFixed(2)}`;
+}
+
+function importMultipleCSVFiles(files) {
+  let totalImported = 0, totalSkipped = 0, totalBad = 0;
+  let completed = 0;
+  const fileCount = files.length;
+
+  // Build existing key set once — updated as each file imports
+  const existingKeys = new Set(
+    state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount))
+  );
+
+  // Show progress in drop zone
+  const dz = $('drop-zone');
+  const origLabel = dz ? dz.querySelector('.drop-label') : null;
+  if (origLabel) origLabel.textContent = `Importing ${fileCount} files…`;
+
+  function onAllDone() {
+    saveState();
+    reconcileTransfers();
+    migrateExistingData();
+    refreshDashboard();
+    refreshTransactions();
+
+    if (origLabel) origLabel.innerHTML = `Drop one or more bank CSVs here or <span>click to browse</span>`;
+
+    const parts = [`${totalImported} imported from ${fileCount} files`];
+    if (totalSkipped > 0) parts.push(`${totalSkipped} duplicates skipped`);
+    if (totalBad > 0) parts.push(`${totalBad} bad rows`);
+    showToast(parts.join(' · '));
+
+    // Surface unknowns for review
+    const uncatIds = state.transactions
+      .filter(t => t.category === 'Unknown' && (t.type === 'expense' || t.type === 'income'))
+      .map(t => t.id);
+    if (uncatIds.length > 0) {
+      setTimeout(() => startCategoryReview(uncatIds), 600);
+    }
+
+    // Auto-detect recurring bills
+    setTimeout(() => {
+      const suggestions = detectRecurringBills();
+      if (suggestions.length > 0) {
+        if (confirm(suggestions.length + ' potential recurring bill' + (suggestions.length > 1 ? 's' : '') + ' detected. Review them now?')) {
+          openRecurringSuggestionsModal();
+        }
+      }
+    }, 1200);
+  }
+
+  [...files].forEach((file, fileIdx) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 1) { completed++; if (completed === fileCount) onAllDone(); return; }
+
+      const headers = parseCSVLine(lines[0]);
+      const rows    = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
+
+      const profile = BANK_PROFILES.find(p => p.detect(headers)) || BANK_PROFILES[BANK_PROFILES.length - 1];
+      const parsed  = profile.parse(rows, headers);
+
+      parsed.forEach((item, idx) => {
+        if (!item.desc || !item.date) { totalBad++; return; }
+
+        const cleanedAmt = (item.rawAmt || '').toString()
+          .replace(/−/g, '-').replace(/[$,\s]/g, '');
+        const rawAmt = parseFloat(cleanedAmt);
+        if (isNaN(rawAmt)) { totalBad++; return; }
+
+        const amount = Math.abs(rawAmt);
+        const date   = normalizeDate(item.date);
+        if (!date) { totalBad++; return; }
+
+        let type;
+        if (['income','expense','invest','transfer'].includes(item.hint)) {
+          type = item.hint;
+        } else if (item.hint === 'xfer-in' || item.hint === 'xfer-out') {
+          type = 'transfer';
+        } else if (item.hint) {
+          const h = item.hint.toLowerCase();
+          type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
+        } else {
+          type = rawAmt >= 0 ? 'income' : 'expense';
+        }
+
+        const key = makeDupeKey(date, item.desc, amount);
+        if (existingKeys.has(key)) { totalSkipped++; return; }
+
+        existingKeys.add(key);
+        state.transactions.push({
+          id: Date.now() + fileIdx * 10000 + idx,
+          date,
+          desc:     item.desc,
+          amount,
+          type,
+          category: guessCategory(item.desc),
+          account:  item.account || profile.name,
+          contact:  item.contact || extractContact(item.desc, type)
+        });
+        totalImported++;
+      });
+
+      completed++;
+      if (origLabel) origLabel.textContent = `Importing… (${completed}/${fileCount})`;
+      if (completed === fileCount) onAllDone();
+    };
+    reader.readAsText(file);
+  });
 }
 
 function importCSV() {
@@ -3671,6 +3985,15 @@ function titleCase(s) {
 
 function guessCategory(desc) {
   if (!desc) return 'Unknown';
+  // Check user-defined vendor rules first (highest priority)
+  if (state.vendorRules) {
+    const key = normDesc(desc);
+    if (state.vendorRules[key]) return state.vendorRules[key];
+    // Also check partial matches for very short keys
+    for (const [k, cat] of Object.entries(state.vendorRules)) {
+      if (k.length >= 5 && key.includes(k)) return cat;
+    }
+  }
   const d = desc.toLowerCase();
 
   // ── Credit card payments (always these first — very specific) ──────────
@@ -4602,29 +4925,80 @@ function showReviewItem() {
   const t = state.transactions.find(x => x.id === reviewQueue[reviewIdx]);
   if (!t) { reviewIdx++; showReviewItem(); return; }
 
-  $('review-progress').textContent = `${reviewIdx + 1} of ${reviewQueue.length} — flagged as "Other"`;
+  // Find similar transactions (same normDesc key) for the "apply to all" offer
+  const key = normDesc(t.desc);
+  const similar = state.transactions.filter(x => x.id !== t.id && normDesc(x.desc) === key);
+  const acctDisplay = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+
+  $('review-progress').textContent = `${reviewIdx + 1} of ${reviewQueue.length} unknown`;
   $('review-body').innerHTML = `
-    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;">${t.date} · ${t.account||''}</div>
-      <div style="font-size:14px;margin-bottom:8px;">${t.desc}</div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</span>
-        <span class="account-pill">${t.account||'Unknown'}</span>
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Date</div>
+          <div style="font-size:13px;font-weight:500;">${t.date}</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Amount</div>
+          <div class="tx-amount ${t.type}" style="font-size:15px;">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Description</div>
+          <div style="font-size:14px;font-weight:500;word-break:break-word;">${t.desc}</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Account</div>
+          <span class="account-pill" style="font-size:11px;">${acctDisplay||'—'}</span>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Type</div>
+          <div style="font-family:var(--mono);font-size:12px;color:${t.type==='income'?'var(--accent)':'var(--red)'};">${t.type}</div>
+        </div>
+        ${t.contact ? `<div style="grid-column:1/-1;">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Contact</div>
+          <div style="font-size:12px;color:var(--accent2);">${t.contact.dir==='in'?'↙ Received from':'↗ Sent to'} ${t.contact.name}</div>
+        </div>` : ''}
       </div>
+      ${similar.length > 0 ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent3);margin-top:4px;">⚑ ${similar.length} other transaction${similar.length>1?'s':''} from same vendor</div>` : ''}
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:10px;">
       <label class="form-label">Assign Category</label>
       <select class="form-select" id="review-cat">
         ${CATEGORIES.map(c => `<option value="${c}" ${c===t.category?'selected':''}>${c}</option>`).join('')}
       </select>
-    </div>`;
+    </div>
+    ${similar.length > 0 ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <input type="checkbox" id="review-apply-all" checked style="accent-color:var(--accent);">
+      <label for="review-apply-all" style="font-size:12px;cursor:pointer;">Apply to all ${similar.length + 1} transactions from this vendor & remember for future imports</label>
+    </div>` : ''}`;
 }
 
 function saveReviewAndNext() {
   const t = state.transactions.find(x => x.id === reviewQueue[reviewIdx]);
   if (t) {
     const sel = $('review-cat');
-    if (sel) t.category = sel.value;
+    const newCat = sel ? sel.value : t.category;
+    t.category = newCat;
+
+    // Save vendor rule
+    const key = normDesc(t.desc);
+    if (!state.vendorRules) state.vendorRules = {};
+    state.vendorRules[key] = newCat;
+
+    // Apply to all similar if checkbox checked
+    const applyAll = $('review-apply-all');
+    if (applyAll && applyAll.checked) {
+      state.transactions.forEach(x => {
+        if (x.id !== t.id && normDesc(x.desc) === key) x.category = newCat;
+      });
+      // Remove now-categorized transactions from review queue
+      const remaining = reviewQueue.slice(reviewIdx + 1).filter(id => {
+        const tx = state.transactions.find(x => x.id === id);
+        return tx && normDesc(tx.desc) !== key;
+      });
+      reviewQueue = [reviewQueue[reviewIdx], ...remaining];
+    }
   }
   reviewIdx++;
   showReviewItem();
@@ -4675,6 +5049,8 @@ function reconcileTransfers() {
       if (b.type === 'bank-transfer' || b.type === 'invest') return false;
       const bDate = new Date(b.date + 'T12:00:00');
       const dayDiff = Math.abs((aDate - bDate) / 86400000);
+      // Don't auto-match amounts >$3000 — too ambiguous (e.g. sell proceeds ≠ transfer)
+      if (a.amount > 3000) return false;
       return Math.abs(b.amount - a.amount) < 0.02 && dayDiff <= 3;
     });
     if (match) {
@@ -4712,6 +5088,7 @@ function loadState() {
       if (!state.bills)    state.bills    = [];
       if (!state.trips)    state.trips    = [];
       if (!state.hub)      state.hub      = {};
+      if (!state.vendorRules) state.vendorRules = {};
       return true;
     }
   } catch(e) {
@@ -4802,6 +5179,15 @@ if (!hadSavedData) {
 }
 
 // ── Migrate existing data to apply all current rules retroactively ────────
+function guessAccountFromDesc(desc) {
+  const d = (desc||'').toLowerCase();
+  if (/interac e-transfer|simplii|scotiabank.*chq|preauth.*nslsc|nb power|nslsc|pearlmaid|be clean/i.test(d)) return 'Simplii Financial';
+  if (/wealthsimple|ws |buy |sell |dividend|drip/i.test(d)) return 'Wealthsimple Activities Export';
+  if (/payment thank you|paiemen t merci|purchase interest/i.test(d)) return 'CIBC Credit Card';
+  if (/td.*visa|td.*mc|td.*amex/i.test(d)) return 'TD Credit Card';
+  return null; // can't guess — leave blank rather than wrong
+}
+
 function migrateExistingData() {
   let changed = 0;
 
@@ -4816,6 +5202,12 @@ function migrateExistingData() {
     if (t.type === 'invest') return;  // never touch investment trades
 
     const d = t.desc || '';
+
+    // ── Step 0: Backfill missing account tag ────────────────────────────────
+    if (!t.account) {
+      const guessed = guessAccountFromDesc(d);
+      if (guessed) { t.account = guessed; changed++; }
+    }
 
     // ── Step 1: Re-extract contact name for e-transfer rows ───────────────
     if (!t.contact && ETRANSFER.test(d)) {
@@ -4862,7 +5254,7 @@ function migrateExistingData() {
     const genericCats = new Set(['Other', null, undefined, '', 'Transfer', 'Bank Transfer']);
     // Only re-categorize if it's a generic catch-all AND not already a clean type
     if (genericCats.has(t.category) && t.type !== 'bank-transfer' && t.type !== 'transfer') {
-      t.category = guessCategory(d);
+      t.category = guessCategory(d);  // guessCategory now checks vendorRules first
       changed++;
     }
   });
