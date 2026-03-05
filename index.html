@@ -307,6 +307,11 @@
   .tx-amount.invest    { color: var(--accent3); font-family: var(--mono); }
   .tx-amount.transfer { color: var(--muted);   font-family: var(--mono); }
 
+  .unknown-cat {
+    color: var(--accent3) !important;
+    font-style: italic;
+  }
+
   .account-pill {
     display: inline-block;
     padding: 2px 8px;
@@ -1181,7 +1186,10 @@
     <div id="view-transactions" class="view">
       <div class="page-header">
         <div class="page-title">Transactions</div>
-        <button class="btn btn-primary" onclick="openModal('tx-modal')">+ Add Transaction</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" id="review-btn" onclick="reviewUnknown()" style="display:none;">⚑ Review Unknown</button>
+          <button class="btn btn-primary" onclick="openModal('tx-modal')">+ Add Transaction</button>
+        </div>
       </div>
 
       <div class="tab-row">
@@ -1681,6 +1689,14 @@
           <option>Salary</option>
           <option>Freelance</option>
           <option>Investment</option>
+          <option>Travel</option>
+          <option>Loan Payment</option>
+          <option>Home Services</option>
+          <option>Cash</option>
+          <option>Transfer</option>
+          <option>Credit Card Payment</option>
+          <option>Income</option>
+          <option>Unknown</option>
           <option>Other</option>
         </select>
       </div>
@@ -2004,7 +2020,7 @@ function switchView(view) {
   if (view === 'budget') refreshBudget();
   if (view === 'networth') refreshNetWorth();
   if (view === 'savings') refreshGoals();
-  if (view === 'transactions') refreshTransactions();
+  if (view === 'transactions') { refreshTransactions(); updateReviewButton(); }
   if (view === 'hub') loadHubInputs();
   if (view === 'holdings') refreshHoldings();
   if (view === 'transfers') refreshTransfers();
@@ -2047,6 +2063,7 @@ function filterTx(f, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   refreshTransactions();
+  updateReviewButton();
 }
 
 function refreshTransactions() {
@@ -2063,7 +2080,7 @@ function refreshTransactions() {
         <div>${t.desc}</div>
         ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}</div>` : ''}
       </td>
-      <td><span class="category-pill">${t.category||'Other'}</span></td>
+      <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'Unknown'}</span></td>
       <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':t.type==='invest'?'var(--accent3)':t.type==='transfer'?'var(--muted)':'var(--red)'}">${t.type}</td>
       <td class="tx-amount ${t.type==='invest'?'invest':t.type==='transfer'?'transfer':t.type}">${t.type==='expense'?'-':t.type==='invest'?'↓':t.type==='transfer'?'⇄':'+'}${fmt(t.amount)}</td>
       <td>${t.account ? `<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','')}</span>` : ''}</td>
@@ -3267,9 +3284,9 @@ function importCSV() {
   showToast(parts.join(' · '));
   refreshDashboard();
 
-  // Surface uncategorized 'Other' expense/income transactions for manual review
+  // Surface Unknown-category transactions for manual review
   const uncatIds = state.transactions
-    .filter(t => t.category === 'Other' && (t.type === 'expense' || t.type === 'income'))
+    .filter(t => t.category === 'Unknown' && (t.type === 'expense' || t.type === 'income'))
     .map(t => t.id);
   if (uncatIds.length > 0) {
     setTimeout(() => startCategoryReview(uncatIds), 600);
@@ -3301,43 +3318,84 @@ function titleCase(s) {
 }
 
 function guessCategory(desc) {
-  if (!desc) return 'Other';
+  if (!desc) return 'Unknown';
   const d = desc.toLowerCase();
-  // Inter-account transfers
-  if (/wealthsimple investments|kurt wealthsimple|e-transfer receive kurt hamlyn/i.test(desc)) return 'Transfer';
-  // Wealthsimple activity types
+
+  // ── Credit card payments (always these first — very specific) ──────────
+  if (/payment thank you|paiemen t merci/.test(d))          return 'Credit Card Payment';
+  if (/internet bill payment visa td/.test(d))               return 'Credit Card Payment';
+  if (/internet bill payment mastercard cibc/.test(d))       return 'Credit Card Payment';
+  if (/internet bill payment scotiabank.*expre/.test(d))     return 'Credit Card Payment';
+  if (/internet bill payment/.test(d))                       return 'Credit Card Payment';
+
+  // ── Own-account transfers ──────────────────────────────────────────────
+  if (/wealthsimple investments|kurt wealthsimple/i.test(desc))     return 'Transfer';
+  if (/e-transfer receive kurt hamlyn/i.test(desc))                  return 'Transfer';
+  if (/internal transfer|transfer_tf/.test(d))                       return 'Transfer';
+
+  // ── E-transfers — auto-categorize by known contact names ──────────────
+  // Incoming (money received)
+  if (/interac e-transfer receive katherine myers/i.test(desc))  return 'Income';
+  if (/interac e-transfer receive kurt hamlyn/i.test(desc))      return 'Transfer';
+  if (/interac e-transfer receive betty myers/i.test(desc))      return 'Income';
+  if (/interac e-transfer receive stephen white/i.test(desc))    return 'Income';
+  if (/interac e-transfer receive david hamlyn/i.test(desc))     return 'Income';
+  if (/interac e-transfer receive margot/i.test(desc))           return 'Income';
+  if (/interac e-transfer receive jayne/i.test(desc))            return 'Income';
+  if (/interac e-transfer receive merle/i.test(desc))            return 'Income';
+  if (/eft credit sunlife/i.test(desc))                          return 'Healthcare';
+  if (/eft credit.*tax refund|rembours.*impot/i.test(desc))     return 'Income';
+  // Outgoing (money sent)
+  if (/interac e-transfer send be clean|pearlmaid|kara/i.test(desc))  return 'Home Services';
+  if (/interac e-transfer send katie/i.test(desc))               return 'Other';
+  if (/interac e-transfer send jayne/i.test(desc))               return 'Other';
+  if (/interac e-transfer send dad/i.test(desc))                 return 'Other';
+  if (/interac e-transfer send chris/i.test(desc))               return 'Other';
+  if (/interac e-transfer send matt/i.test(desc))                return 'Other';
+  if (/interac e-transfer send monaco snow/i.test(desc))         return 'Home Services';
+  if (/interac e-transfer send.*golf/i.test(desc))               return 'Entertainment';
+  if (/interac e-transfer send.*hockey/i.test(desc))             return 'Entertainment';
+  if (/remise carbone|carbon rebate/i.test(desc))                return 'Income';
+
+  // ── Wealthsimple activity types ────────────────────────────────────────
   if (/direct deposit|aft.?in/.test(d))        return 'Salary';
   if (/dividend/.test(d))                       return 'Investment';
-  if (/buy:|sell:|trade/.test(d))               return 'Investment';
-  if (/fee/.test(d))                            return 'Other';
-  if (/internal transfer|transfer_tf/.test(d))  return 'Transfer';
-  if (/bill payment|obp.?out/.test(d))         return 'Utilities';
-  if (/bonus|giveaway/.test(d))                return 'Other';
-  // CIBC merchants
-  if (/costco wholesale|costco gas/.test(d))    return 'Shopping';
-  if (/costco trave|travel|airbnb|hotel|resort|flight|westjet|air canada/.test(d)) return 'Travel';
-  if (/tide.?boar|brewing|bar |pub |lounge|restaurant|bistro|cafe|brasserie/.test(d)) return 'Food & Dining';
-  if (/mancuso|clinic|pharmacy|shoppers|doctor|dental|medical|health|physio/.test(d)) return 'Healthcare';
-  if (/sq \*|pos |purchase interest|interest/.test(d)) return 'Other';
-  if (/nslsc|student loan/.test(d))            return 'Loan Payment';
-  if (/mortgage|merix/.test(d))                return 'Housing';
-  if (/toyota finance|term loan/.test(d))      return 'Transport';
-  if (/nb power|energie nb|hydro|electric|water|gas utility/.test(d)) return 'Utilities';
-  if (/sunlife|sun life/.test(d))              return 'Healthcare';
-  if (/carbon rebate|tax refund|government/.test(d)) return 'Income';
-  if (/visa td|mastercard cibc|scotiabank.*expre|credit card payment|payment thank you/.test(d)) return 'Transfer';
+  if (/buy:|sell:/.test(d))                     return 'Investment';
+  if (/bonus|giveaway/.test(d))                 return 'Income';
+  if (/obp.?out/.test(d))                       return 'Credit Card Payment';
+
+  // ── Recurring bills ────────────────────────────────────────────────────
+  if (/nslsc|student loan/.test(d))             return 'Loan Payment';
+  if (/mortgage|merix/.test(d))                 return 'Housing';
+  if (/toyota finance|term loan/.test(d))       return 'Transport';
+  if (/nb power|energie nb/.test(d))            return 'Utilities';
+  if (/sunlife|sun life/.test(d))               return 'Healthcare';
+  if (/bns preauth/.test(d))                    return 'Other';
+
+  // ── Merchants ──────────────────────────────────────────────────────────
+  if (/costco gas/.test(d))                     return 'Transport';
+  if (/costco trave/.test(d))                   return 'Travel';
+  if (/costco wholesale/.test(d))               return 'Shopping';
+  if (/airbnb|hotel|resort|westjet|air canada|costco trave/.test(d)) return 'Travel';
+  if (/tide.?boar|brewing|bar |pub |lounge|brasserie/.test(d)) return 'Food & Dining';
+  if (/restaurant|bistro|cafe|tim horton|mcdonald|pizza|sushi/.test(d)) return 'Food & Dining';
+  if (/mancuso|clinic|physio/.test(d))          return 'Healthcare';
+  if (/pharmacy|shoppers|doctor|dental/.test(d)) return 'Healthcare';
   if (/snow removal|cleaning|clean|pearlmaid/.test(d)) return 'Home Services';
-  if (/golf|hockey|sport|gym|fitness/.test(d)) return 'Entertainment';
-  if (/abm|atm|withdrawal/.test(d))           return 'Cash';
-  if (/paypal/.test(d))                        return 'Shopping';
+  if (/golf|bannister.*pool/.test(d))           return 'Entertainment';
+  if (/hockey|sport|gym|fitness/.test(d))       return 'Entertainment';
+  if (/netflix|spotify|cinema|theatre|amazon prime/.test(d)) return 'Entertainment';
   if (/grocery|loblaws|sobeys|superstore/.test(d)) return 'Food & Dining';
-  if (/rent|mortgage|hydro|internet|rogers|bell/.test(d)) return 'Housing';
-  if (/uber|lyft|gas|shell|esso|transit|parking|taxi/.test(d)) return 'Transport';
-  if (/netflix|spotify|amazon prime|cinema|theatre/.test(d)) return 'Entertainment';
-  if (/amazon|walmart|target/.test(d)) return 'Shopping';
-  if (/salary|payroll|deposit|employer/.test(d)) return 'Salary';
-  if (/e-transfer receive|e-transfer send/.test(d)) return 'Transfer';
-  return 'Other';
+  if (/hydro|electric|water|internet|rogers|bell/.test(d)) return 'Utilities';
+  if (/uber|lyft|shell|esso|transit|parking|taxi/.test(d)) return 'Transport';
+  if (/amazon|walmart|target|paypal|sq \*|pos purchase/.test(d)) return 'Shopping';
+  if (/abm|atm withdrawal/.test(d))             return 'Cash';
+  if (/salary|payroll|employer/.test(d))        return 'Salary';
+  if (/purchase interest|interest charge/.test(d)) return 'Credit Card Payment';
+  if (/fee/.test(d))                            return 'Other';
+
+  // ── Fallback — return Unknown so it gets flagged for review ───────────
+  return 'Unknown';
 }
 
 // ═══════════════════════════════════
@@ -3893,7 +3951,7 @@ function refreshTrips() {
           <tbody>${allTripTx.map(t => `<tr>
             <td><span class="highlight-val">${t.date}</span></td>
             <td style="font-size:12px;">${t.desc}</td>
-            <td><span class="category-pill">${t.category||'Other'}</span></td>
+            <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'Unknown'}</span></td>
             <td class="tx-amount expense">-${fmt(t.amount)}</td>
             <td>${t.account?`<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple')}</span>`:''}</td>
             <td>${(trip.extraTxIds||[]).includes(t.id)?`<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="toggleTripExtra(${trip.id},${t.id})">Remove</button>`:''}</td>
@@ -3930,7 +3988,27 @@ let reviewIdx   = 0;
 
 const CATEGORIES = ['Food & Dining','Housing','Transport','Healthcare','Entertainment',
   'Shopping','Utilities','Salary','Investment','Travel','Loan Payment','Home Services',
-  'Cash','Transfer','Income','Other'];
+  'Cash','Transfer','Credit Card Payment','Income','Other','Unknown'];
+
+function reviewUnknown() {
+  const ids = state.transactions
+    .filter(t => t.category === 'Unknown' || t.category === 'Other')
+    .map(t => t.id);
+  if (ids.length === 0) { showToast('No unknown transactions to review!'); return; }
+  startCategoryReview(ids);
+}
+
+function updateReviewButton() {
+  const btn = $('review-btn');
+  if (!btn) return;
+  const count = state.transactions.filter(t => t.category === 'Unknown').length;
+  if (count > 0) {
+    btn.style.display = 'flex';
+    btn.textContent = '⚑ Review Unknown (' + count + ')';
+  } else {
+    btn.style.display = 'none';
+  }
+}
 
 function startCategoryReview(txIds) {
   reviewQueue = txIds;
@@ -3945,6 +4023,8 @@ function showReviewItem() {
     closeModal('review-modal');
     saveState();
     refreshDashboard();
+    refreshTransactions();
+    updateReviewButton();
     showToast('Categories saved!');
     return;
   }
@@ -4138,9 +4218,58 @@ if (!hadSavedData) {
   saveState();
 }
 
+// ── Migrate existing data to apply all current rules retroactively ────────
+function migrateExistingData() {
+  let changed = 0;
+  state.transactions.forEach(t => {
+    // Re-extract contact if missing
+    if (!t.contact) {
+      const c = extractContact(t.desc, t.type);
+      if (c) { t.contact = c; changed++; }
+    }
+
+    // Re-run category: update 'Other' → proper category or Unknown
+    // But don't override manually-reviewed ones (heuristic: skip if already a specific cat)
+    const genericCats = new Set(['Other', null, undefined, '']);
+    if (genericCats.has(t.category)) {
+      t.category = guessCategory(t.desc);
+      changed++;
+    }
+
+    // Re-run credit card payment detection for type=transfer that should be CC Payment
+    if (t.type === 'transfer' && !t.category) {
+      t.category = guessCategory(t.desc);
+      changed++;
+    }
+
+    // Tag CIBC payment-thank-you rows as Credit Card Payment type=transfer
+    if (/payment thank you|paiemen t merci/i.test(t.desc)) {
+      t.type = 'transfer';
+      t.category = 'Credit Card Payment';
+      changed++;
+    }
+
+    // Tag OBP_OUT (WS bill payments) as Credit Card Payment
+    if (/bill payment|obp.?out/i.test(t.desc) && t.type === 'expense') {
+      t.category = 'Credit Card Payment';
+      changed++;
+    }
+  });
+
+  // Re-run transfer reconciliation on all data
+  reconcileTransfers();
+
+  if (changed > 0) {
+    saveState();
+    console.log('Migration: updated ' + changed + ' transactions');
+  }
+}
+
 refreshDashboard();
 loadHubInputs();
 if (state.holdings && state.holdings.length) syncHoldingsToNetWorth();
+migrateExistingData();
+updateReviewButton();
 </script>
 </body>
 </html>
