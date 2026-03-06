@@ -617,6 +617,9 @@
   /* TOAST */
   .ctx-item:hover { background: var(--surface2); }
 .ctx-item.active-cat { color: var(--accent); font-weight: 600; }
+.ctx-tab { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); transition: all 0.15s; }
+.ctx-tab:hover { background: var(--surface2); color: var(--text); }
+.ctx-tab-active { color: var(--accent) !important; border-bottom: 2px solid var(--accent); background: rgba(181,242,58,0.05); }
 .toast {
     position: fixed;
     bottom: 24px;
@@ -1682,6 +1685,24 @@
           <button class="btn btn-primary" onclick="addCustomCategory()">+ Add Category</button>
         </div>
       </div>
+
+      <!-- ── Tag Colours ──────────────────────────────────────── -->
+      <div class="chart-card">
+        <div class="chart-card-title" style="margin-bottom:6px;">Tag Colours</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+          Customise the colour of account and category pills in the transaction list. Click a colour swatch to change it. Click ✕ to reset to default.
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Account Tags</div>
+          <div id="acct-color-list" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+        </div>
+
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Category Tags</div>
+          <div id="cat-color-list" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════ TRIPS ═══════════ -->
@@ -2098,11 +2119,21 @@
 </div>
 
 <!-- CONTEXT MENU -->
-<div id="ctx-menu" style="display:none;position:fixed;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);min-width:200px;overflow:hidden;">
-  <div id="ctx-menu-header" style="padding:10px 14px 6px;font-family:var(--mono);font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;"></div>
-  <div id="ctx-cat-list" style="max-height:280px;overflow-y:auto;padding:4px 0;"></div>
-  <div style="border-top:1px solid var(--border);padding:4px 0;">
-    <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
+<div id="ctx-menu" style="display:none;position:fixed;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);min-width:220px;max-width:300px;overflow:hidden;">
+  <div id="ctx-menu-header" style="padding:10px 14px 8px;font-family:var(--mono);font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  <!-- Tabs -->
+  <div style="display:flex;border-bottom:1px solid var(--border);">
+    <div id="ctx-tab-cat"  class="ctx-tab ctx-tab-active" onclick="ctxSwitchTab('cat')"  style="flex:1;text-align:center;padding:7px 4px;font-size:11px;cursor:pointer;">Category</div>
+    <div id="ctx-tab-type" class="ctx-tab"                onclick="ctxSwitchTab('type')" style="flex:1;text-align:center;padding:7px 4px;font-size:11px;cursor:pointer;">Type</div>
+    <div id="ctx-tab-more" class="ctx-tab"                onclick="ctxSwitchTab('more')" style="flex:1;text-align:center;padding:7px 4px;font-size:11px;cursor:pointer;">More</div>
+  </div>
+  <!-- Category panel -->
+  <div id="ctx-panel-cat" style="max-height:280px;overflow-y:auto;padding:4px 0;"></div>
+  <!-- Type panel -->
+  <div id="ctx-panel-type" style="display:none;padding:4px 0;"></div>
+  <!-- More panel -->
+  <div id="ctx-panel-more" style="display:none;padding:4px 0;">
+    <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
   </div>
 </div>
 
@@ -2124,7 +2155,9 @@ let state = {
   holdings: [],  // [{account, accountType, symbol, name, securityType, qty, price, bookValue, marketValue, unrealizedGain, asOf}]
   trips: [],
   vendorRules: {},
-  customCategories: [],  // normDesc(vendor) → category, persisted for future imports
+  customCategories: [],
+  typeRules: {},
+  tagColors: {},  // 'acct:Name' or 'cat:Name' → hex color  // normDesc(vendor) → category, persisted for future imports
 };
 
 let txFilter = 'all';
@@ -2251,6 +2284,27 @@ function openCtxMenu(e, txId) {
   menu.style.display = 'block';
 }
 
+function ctxSetType(type, applyAll) {
+  closeCtxMenu();
+  const t = state.transactions.find(x => x.id === ctxTxId);
+  if (!t) return;
+  const key = normDesc(t.desc);
+  t.type = type;
+  if (applyAll) {
+    let count = 0;
+    state.transactions.forEach(x => { if (x.id !== ctxTxId && normDesc(x.desc) === key) { x.type = type; count++; } });
+    // Save type rule
+    if (!state.typeRules) state.typeRules = {};
+    state.typeRules[key] = type;
+    showToast('Type "' + type + '" applied to ' + (count+1) + ' transactions · rule saved.');
+  } else {
+    showToast('Type changed to "' + type + '".');
+  }
+  saveState();
+  refreshTransactions();
+  refreshDashboard();
+}
+
 function ctxSetCategory(cat, applyAll) {
   closeCtxMenu();
   const t = state.transactions.find(x => x.id === ctxTxId);
@@ -2296,6 +2350,20 @@ function closeCtxMenu() {
   const m = $('ctx-menu');
   if (m) m.style.display = 'none';
   ctxTxId = null;
+}
+
+// ─── Tag colour helpers ───────────────────────────────────────────────────────
+function acctPillStyle(acct) {
+  if (!acct) return '';
+  const col = (state.tagColors || {})['acct:' + acct];
+  if (!col) return '';
+  return `background:${col}22;color:${col};border-color:${col}55;`;
+}
+function catPillStyle(cat) {
+  if (!cat) return '';
+  const col = (state.tagColors || {})['cat:' + cat];
+  if (!col) return '';
+  return `background:${col}22;color:${col};border-color:${col}55;`;
 }
 
 // Close on any click/escape outside
@@ -2380,17 +2448,23 @@ This will also remember this rule for future imports.`
         similar.forEach(x => { x.category = newCat; });
         // Save vendor rule for future imports
         if (!state.vendorRules) state.vendorRules = {};
+      if (!state.typeRules) state.typeRules = {};
+      if (!state.tagColors) state.tagColors = {};
         state.vendorRules[key] = newCat;
         showToast(`"${newCat}" applied to ${similar.length + 1} transactions & saved for future imports.`);
       } else {
         // Still save the rule for future imports even if not bulk-applying
         if (!state.vendorRules) state.vendorRules = {};
+      if (!state.typeRules) state.typeRules = {};
+      if (!state.tagColors) state.tagColors = {};
         state.vendorRules[key] = newCat;
         showToast(`Category saved. Rule remembered for future imports.`);
       }
     } else if (newCat !== oldCat) {
       // Save rule even for single transactions
       if (!state.vendorRules) state.vendorRules = {};
+      if (!state.typeRules) state.typeRules = {};
+      if (!state.tagColors) state.tagColors = {};
       state.vendorRules[key] = newCat;
     }
 
@@ -2490,11 +2564,11 @@ function refreshTransactions() {
         ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}</div>` : ''}
       </td>
       <td>
-        <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
+        <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;${catPillStyle(t.category)}" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
       <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
-      <td>${acct ? `<span class="account-pill">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
+      <td>${acct ? `<span class="account-pill" style="${acctPillStyle(acct)}">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>`;
   }).join('');
@@ -3452,7 +3526,7 @@ const BANK_PROFILES = [
 
       // Which activity types count as income vs expense
       const incomeSubTypes = new Set(['AFT_IN','EFT','E_TRFIN','GIVEAWAY','TRANSFER','TRANSFER_TF']);
-      const incomeActTypes = new Set(['Dividend','Interest','BonusPayment']);
+      const incomeActTypes = new Set(['BonusPayment']); // Dividend/Interest tagged as invest and shown in trade panel
 
       return rows.map(r => {
         const actType = (r[acti] || '').trim();
@@ -3474,6 +3548,7 @@ const BANK_PROFILES = [
         const amt = parseFloat(rawAmt) || 0;
         let hint = null;
         if (incomeActTypes.has(actType)) hint = 'income';
+        else if (actType === 'Dividend' || actType === 'Interest') hint = 'invest';
         else if (actType === 'MoneyMovement') {
           if (subType === 'EFT') {
             // EFT = external bank transfer (to/from Simplii) — flag for cross-account dedup
@@ -4839,6 +4914,46 @@ function promoteToTransaction(id) {
   showToast('Moved to transactions as expense. Change category as needed.');
 }
 
+function openContactDetail(name) {
+  const txs = state.transactions.filter(t =>
+    t.type === 'transfer' && t.contact && t.contact.name === name
+  ).sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!txs.length) { showToast('No transactions found for ' + name); return; }
+
+  $('contact-detail-name').textContent = name;
+
+  const totalIn  = txs.filter(t => t.contact.dir === 'in' ).reduce((s,t) => s + t.amount, 0);
+  const totalOut = txs.filter(t => t.contact.dir === 'out').reduce((s,t) => s + t.amount, 0);
+  $('contact-detail-stats').innerHTML = `
+    <div style="background:rgba(58,242,168,0.08);border:1px solid rgba(58,242,168,0.2);border-radius:8px;padding:10px 16px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Received</div>
+      <div style="font-family:var(--mono);font-size:16px;color:var(--accent);">+${fmt(totalIn)}</div>
+    </div>
+    <div style="background:rgba(242,90,58,0.08);border:1px solid rgba(242,90,58,0.2);border-radius:8px;padding:10px 16px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Sent</div>
+      <div style="font-family:var(--mono);font-size:16px;color:var(--red);">-${fmt(totalOut)}</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Transactions</div>
+      <div style="font-family:var(--mono);font-size:16px;">${txs.length}</div>
+    </div>`;
+
+  $('contact-detail-body').innerHTML = txs.map(t => {
+    const dir  = t.contact.dir;
+    const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+    return `<tr>
+      <td><span class="highlight-val">${t.date}</span></td>
+      <td style="font-size:11px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.desc}</td>
+      <td><span style="font-family:var(--mono);font-size:11px;color:${dir==='in'?'var(--accent)':'var(--red)'};">${dir==='in'?'↙ Received':'↗ Sent'}</span></td>
+      <td class="tx-amount ${dir==='in'?'income':'expense'}" style="font-family:var(--mono);">${dir==='in'?'+':'-'}${fmt(t.amount)}</td>
+      <td>${acct ? `<span class="account-pill">${acct}</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  openModal('contact-detail-modal');
+}
+
 function refreshTransfers() {
   // All e-transfer transactions (those with a contact attribute)
   // Only e-transfers to/from OTHER people — own bank moves use 'bank-transfer'
@@ -5004,6 +5119,24 @@ function deleteTrip(id) {
   refreshTrips();
 }
 
+function removeTripTx(tripId, txId) {
+  // Removes a transaction from a trip.
+  // If it was manually attached (extraTxIds), remove from there.
+  // If it was in-range, add to excludedTxIds to suppress it.
+  const trip = state.trips.find(t => t.id === tripId);
+  if (!trip) return;
+  if (!trip.excludedTxIds) trip.excludedTxIds = [];
+  if (!trip.extraTxIds)    trip.extraTxIds    = [];
+
+  if (trip.extraTxIds.includes(txId)) {
+    trip.extraTxIds = trip.extraTxIds.filter(id => id !== txId);
+  } else {
+    if (!trip.excludedTxIds.includes(txId)) trip.excludedTxIds.push(txId);
+  }
+  saveState();
+  refreshTrips();
+}
+
 function toggleTripExtra(tripId, txId) {
   const trip = (state.trips||[]).find(t => t.id === tripId);
   if (!trip) return;
@@ -5024,10 +5157,12 @@ function refreshTrips() {
   }
 
   el.innerHTML = trips.map(trip => {
-    // Auto-gather expenses in date range (expenses + invest, not transfer)
+    // Auto-gather expenses in date range, excluding any user-removed rows
+    const excluded = new Set(trip.excludedTxIds || []);
     const inRange = state.transactions.filter(t =>
       t.date >= trip.start && t.date <= trip.end &&
-      (t.type === 'expense' || t.type === 'invest')
+      (t.type === 'expense' || t.type === 'invest') &&
+      !excluded.has(t.id)
     );
     // Extra manually-attached transactions
     const extras = state.transactions.filter(t => (trip.extraTxIds||[]).includes(t.id));
@@ -5070,7 +5205,7 @@ function refreshTrips() {
             <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'Unknown'}</span></td>
             <td class="tx-amount expense">-${fmt(t.amount)}</td>
             <td>${t.account?`<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple')}</span>`:''}</td>
-            <td>${(trip.extraTxIds||[]).includes(t.id)?`<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="toggleTripExtra(${trip.id},${t.id})">Remove</button>`:''}</td>
+            <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="removeTripTx(${trip.id},${t.id})">Remove</button></td>
           </tr>`).join('')}</tbody>
         </table>` : `<div class="empty-state" style="padding:20px;"><div class="empty-text">No expenses found in this date range.</div></div>`}
       </div>
@@ -5114,6 +5249,73 @@ function refreshSettings() {
        </span>`
     ).join('');
   }
+  renderTagColorPickers();
+}
+
+function renderTagColorPickers() {
+  // Account colour pickers
+  const accts = [...new Set(
+    state.transactions
+      .filter(t => t.account)
+      .map(t => t.account.replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card',''))
+  )].sort();
+
+  const acctList = $('acct-color-list');
+  if (acctList) {
+    acctList.innerHTML = accts.length === 0
+      ? '<span style="font-family:var(--mono);font-size:11px;color:var(--muted);">Import transactions to see accounts here.</span>'
+      : accts.map(a => {
+          const key = 'acct:' + a;
+          const col = (state.tagColors||{})[key] || '';
+          const preview = col
+            ? `background:${col}22;color:${col};border-color:${col}55;`
+            : '';
+          return `<div style="display:flex;align-items:center;gap:6px;">
+            <span class="account-pill" style="${preview}">${a}</span>
+            <input type="color" value="${col || '#3ab5f2'}"
+                   style="width:28px;height:22px;padding:0;border:none;border-radius:4px;cursor:pointer;background:none;"
+                   onchange="setTagColor('${key.replace(/'/g,"\'")}', this.value)"
+                   title="Pick colour for ${a}">
+            ${col ? `<span onclick="clearTagColor('${key.replace(/'/g,"\'")}')
+              " style="cursor:pointer;font-size:10px;color:var(--muted);" title="Reset to default">✕</span>` : ''}
+          </div>`;
+        }).join('');
+  }
+
+  // Category colour pickers
+  const catList = $('cat-color-list');
+  if (catList) {
+    const cats = getCategoryList();
+    catList.innerHTML = cats.map(c => {
+      const key = 'cat:' + c;
+      const col = (state.tagColors||{})[key] || '';
+      const preview = col ? `background:${col}22;color:${col};border-color:${col}55;` : '';
+      return `<div style="display:flex;align-items:center;gap:6px;">
+        <span class="category-pill" style="${preview}">${c}</span>
+        <input type="color" value="${col || '#8888aa'}"
+               style="width:28px;height:22px;padding:0;border:none;border-radius:4px;cursor:pointer;background:none;"
+               onchange="setTagColor('${key.replace(/'/g,"\'")}', this.value)"
+               title="Pick colour for ${c}">
+        ${col ? `<span onclick="clearTagColor('${key.replace(/'/g,"\'")}')
+          " style="cursor:pointer;font-size:10px;color:var(--muted);" title="Reset to default">✕</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+}
+
+function setTagColor(key, hex) {
+  if (!state.tagColors) state.tagColors = {};
+  state.tagColors[key] = hex;
+  saveState();
+  renderTagColorPickers();
+  refreshTransactions();
+}
+
+function clearTagColor(key) {
+  if (state.tagColors) delete state.tagColors[key];
+  saveState();
+  renderTagColorPickers();
+  refreshTransactions();
 }
 
 function addCustomCategory() {
@@ -5367,6 +5569,8 @@ function loadState() {
       if (!state.trips)    state.trips    = [];
       if (!state.hub)      state.hub      = {};
       if (!state.vendorRules) state.vendorRules = {};
+      if (!state.typeRules) state.typeRules = {};
+      if (!state.tagColors) state.tagColors = {};
       return true;
     }
   } catch(e) {
@@ -5469,17 +5673,21 @@ function guessAccountFromDesc(desc) {
 function migrateExistingData() {
   let changed = 0;
 
-  // ── Step 0a: Fix old WS sell transactions typed as 'income' ─────────────
-  // WS sells were previously tagged as income — they should be invest
+  // ── Step 0a: Fix old WS trade/dividend/interest transactions typed incorrectly
   state.transactions.forEach(t => {
-    if (t.type === 'income' && /^(buy|sell):/i.test(t.desc || '')) {
-      t.type = 'invest';
-      changed++;
+    const d = (t.desc || '').toLowerCase();
+    const isWS = /wealthsimple|rrsp|tfsa/i.test(t.account || '');
+    // Sells/buys previously tagged as income or expense
+    if ((t.type === 'income' || t.type === 'expense') && /^(buy|sell):/i.test(t.desc || '')) {
+      t.type = 'invest'; changed++;
     }
-    if (t.type === 'income' && t.category === 'Investment' &&
-        /wealthsimple|rrsp|tfsa|trade|sell|buy/i.test(t.account || '')) {
-      t.type = 'invest';
-      changed++;
+    // Dividends/interest from WS — previously income, now invest
+    else if (t.type === 'income' && isWS && /^(dividend|interest|drip):/i.test(t.desc || '')) {
+      t.type = 'invest'; changed++;
+    }
+    // Anything in WS with category Investment and income type
+    else if (t.type === 'income' && t.category === 'Investment' && isWS) {
+      t.type = 'invest'; changed++;
     }
   });
 
