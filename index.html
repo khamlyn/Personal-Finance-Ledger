@@ -2101,6 +2101,22 @@
   </div>
 </div>
 
+<!-- Add to Trip Modal -->
+<div class="modal-overlay" id="add-to-trip-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">Add to Trip</div>
+    <div id="add-to-trip-tx-label" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;word-break:break-word;"></div>
+    <div class="form-group">
+      <label class="form-label">Select Trip</label>
+      <select class="form-select" id="add-to-trip-select"></select>
+    </div>
+    <div class="modal-footer" style="margin-top:20px;">
+      <button class="btn btn-ghost" onclick="closeModal('add-to-trip-modal')">Cancel</button>
+      <button class="btn btn-primary" id="add-to-trip-btn">✈ Add to Trip</button>
+    </div>
+  </div>
+</div>
+
 <!-- Contact Detail Modal -->
 <div class="modal-overlay" id="contact-detail-modal">
   <div class="modal" style="max-width:580px;max-height:80vh;overflow-y:auto;">
@@ -2367,23 +2383,32 @@ function ctxSetCategory(cat, applyAll) {
 }
 
 function ctxAddToTrip() {
+  // Capture the ID BEFORE closeCtxMenu() nulls it
+  const txId = ctxTxId;
   closeCtxMenu();
-  const t = state.transactions.find(x => x.id === ctxTxId);
-  if (!t || !state.trips || !state.trips.length) return;
-  // Build trip picker modal inline
-  const tripOpts = state.trips.map(tr =>
-    `<option value="${tr.id}">${tr.name} (${tr.start}→${tr.end})</option>`
+  const t = state.transactions.find(x => x.id === txId);
+  if (!t || !state.trips || !state.trips.length) {
+    if (!state.trips || !state.trips.length) showToast('No trips yet — add one in the Trips tab first.');
+    return;
+  }
+
+  // Populate and open the trip-picker modal
+  $('add-to-trip-tx-label').textContent = t.desc.slice(0, 50) + (t.desc.length > 50 ? '…' : '') + '  ·  ' + fmt(t.amount);
+  $('add-to-trip-select').innerHTML = state.trips.map(tr =>
+    `<option value="${tr.id}">${tr.name} (${tr.start} → ${tr.end})</option>`
   ).join('');
-  const tripList = state.trips.map((tr,i) => (i+1) + '. ' + tr.name + ' (' + tr.start + ')').join('\n');
-  const choice = prompt('Add "' + t.desc.slice(0,40) + '" to which trip?\n\n' + tripList + '\n\nEnter the trip number:');
-  if (!choice) return;
-  const idx = parseInt(choice) - 1;
-  const trip = state.trips[idx];
-  if (!trip) { showToast('Invalid selection.'); return; }
-  if (!trip.extraTxIds) trip.extraTxIds = [];
-  if (!trip.extraTxIds.includes(t.id)) trip.extraTxIds.push(t.id);
-  saveState();
-  showToast('"' + t.desc.slice(0,30) + '" added to ' + trip.name);
+  $('add-to-trip-btn').onclick = () => {
+    const sel  = $('add-to-trip-select');
+    const trip = state.trips.find(tr => tr.id === parseInt(sel.value));
+    if (!trip) return;
+    if (!trip.extraTxIds) trip.extraTxIds = [];
+    if (!trip.extraTxIds.includes(txId)) trip.extraTxIds.push(txId);
+    saveState();
+    closeModal('add-to-trip-modal');
+    showToast('"' + t.desc.slice(0, 30) + '" added to ' + trip.name);
+    if (document.getElementById('view-trips').classList.contains('active')) refreshTrips();
+  };
+  openModal('add-to-trip-modal');
 }
 
 function closeCtxMenu() {
