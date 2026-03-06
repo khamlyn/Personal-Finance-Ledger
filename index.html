@@ -2173,7 +2173,8 @@ let state = {
   vendorRules: {},
   customCategories: [],
   typeRules: {},
-  tagColors: {},  // 'acct:Name' or 'cat:Name' → hex color  // normDesc(vendor) → category, persisted for future imports
+  tagColors:  {},  // 'acct:Name' or 'cat:Name' → hex color
+  tripCollapsed: {},  // normDesc(vendor) → category, persisted for future imports
 };
 
 let txFilter = 'all';
@@ -5212,6 +5213,44 @@ function toggleTripExtra(tripId, txId) {
   refreshTrips();
 }
 
+function toggleTripCollapse(tripId) {
+  if (!state.tripCollapsed) state.tripCollapsed = {};
+  state.tripCollapsed[tripId] = !state.tripCollapsed[tripId];
+  saveState();
+  // Toggle just the body div without full re-render to avoid losing scroll position
+  const body = $('trip-body-' + tripId);
+  const arrow = $('trip-arrow-' + tripId);
+  if (body)  body.style.display  = state.tripCollapsed[tripId] ? 'none' : 'block';
+  if (arrow) arrow.textContent   = state.tripCollapsed[tripId] ? '▶' : '▼';
+}
+
+function tripCatEdit(txId, pillEl) {
+  // Inline category selector on a trip transaction pill — same pattern as quickCatEdit
+  const t = state.transactions.find(x => x.id === txId);
+  if (!t) return;
+  const sel = document.createElement('select');
+  sel.className = 'form-select';
+  sel.style.cssText = 'font-size:11px;padding:2px 6px;width:auto;';
+  getCategoryList().forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = c;
+    if (c === t.category) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  pillEl.replaceWith(sel);
+  sel.focus();
+  const commit = () => {
+    const newCat = sel.value;
+    t.category = newCat;
+    if (!state.vendorRules) state.vendorRules = {};
+    state.vendorRules[normDesc(t.desc)] = newCat;
+    saveState();
+    refreshTrips();
+  };
+  sel.addEventListener('change', commit);
+  sel.addEventListener('blur', () => setTimeout(commit, 100));
+}
+
 function refreshTrips() {
   const el = $('trips-list');
   if (!el) return;
@@ -5221,65 +5260,72 @@ function refreshTrips() {
     return;
   }
 
+  if (!state.tripCollapsed) state.tripCollapsed = {};
+
   el.innerHTML = trips.map(trip => {
-    // Auto-gather expenses in date range, excluding any user-removed rows
-    const excluded = new Set(trip.excludedTxIds || []);
-    const inRange = state.transactions.filter(t =>
+    const excluded  = new Set(trip.excludedTxIds || []);
+    const inRange   = state.transactions.filter(t =>
       t.date >= trip.start && t.date <= trip.end &&
       (t.type === 'expense' || t.type === 'invest') &&
       !excluded.has(t.id)
     );
-    // Extra manually-attached transactions
-    const extras = state.transactions.filter(t => (trip.extraTxIds||[]).includes(t.id));
+    const extras    = state.transactions.filter(t => (trip.extraTxIds||[]).includes(t.id));
     const allTripTx = [...new Map([...inRange,...extras].map(t=>[t.id,t])).values()];
-    const total = allTripTx.reduce((s,t) => s + t.amount, 0);
-
-    const mapUrl = trip.location
-      ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(trip.location)}&zoom=7&size=600x200&maptype=roadmap&style=element:geometry|color:0x1b1f1b&style=element:labels.text.fill|color:0xb5f23a&key=`
-      : null;
+    const total     = allTripTx.reduce((s,t) => s + t.amount, 0);
+    const collapsed = !!state.tripCollapsed[trip.id];
 
     return `<div class="trip-card" style="margin-bottom:24px;">
-      <div class="trip-header">
-        <div class="trip-map-bg" style="background:linear-gradient(135deg,#1b2b1b 0%,#0d1a0d 100%);min-height:80px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;padding:16px;">
-          <div>
-            <div style="font-family:var(--serif);font-size:22px;">${trip.name}</div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:4px;">
-              📍 ${trip.location||'—'} &nbsp;·&nbsp; ${trip.start} → ${trip.end}
-            </div>
-            ${trip.notes ? `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">${trip.notes}</div>` : ''}
+
+      <!-- ── Header (always visible) ─────────────────────────────── -->
+      <div style="background:linear-gradient(135deg,#1b2b1b 0%,#0d1a0d 100%);border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;"
+           onclick="toggleTripCollapse(${trip.id})">
+        <div>
+          <div style="font-family:var(--serif);font-size:20px;">${trip.name}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:3px;">
+            📍 ${trip.location||'—'} &nbsp;·&nbsp; ${trip.start} → ${trip.end}
           </div>
+          ${trip.notes ? `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;">${trip.notes}</div>` : ''}
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:0 0 10px 10px;border:1px solid var(--border);border-top:none;">
-          <div>
-            <span style="font-family:var(--serif);font-size:24px;color:var(--accent);">${fmt(total)}</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px;">total · ${allTripTx.length} transactions</span>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span id="trip-arrow-${trip.id}" style="font-size:12px;color:var(--muted);">${collapsed ? '▶' : '▼'}</span>
+          <span style="font-family:var(--serif);font-size:20px;color:var(--accent);">${fmt(total)}</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${allTripTx.length} transaction${allTripTx.length!==1?'s':''}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;padding:8px 16px;background:var(--surface2);border-left:1px solid var(--border);border-right:1px solid var(--border);">
+        <button class="btn btn-danger" style="font-size:11px;padding:5px 12px;" onclick="deleteTrip(${trip.id})">Delete Trip</button>
+      </div>
+
+      <!-- ── Collapsible body ─────────────────────────────────────── -->
+      <div id="trip-body-${trip.id}" style="display:${collapsed ? 'none' : 'block'};">
+        <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">
+          <div style="padding:10px 16px;background:var(--surface2);font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
+            Transactions
           </div>
-          <button class="btn btn-danger" onclick="deleteTrip(${trip.id})">Delete Trip</button>
+          ${allTripTx.length > 0 ? `<table class="tx-table" style="margin:0;">
+            <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Account</th><th></th></tr></thead>
+            <tbody>${allTripTx.map(t => {
+              const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple');
+              const catStyle = catPillStyle ? catPillStyle(t.category) : '';
+              return `<tr>
+                <td><span class="highlight-val">${t.date}</span></td>
+                <td style="font-size:12px;">${t.desc}</td>
+                <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;${catStyle}" onclick="tripCatEdit(${t.id}, this)" title="Click to change category">${t.category||'Unknown'}</span></td>
+                <td class="tx-amount expense">-${fmt(t.amount)}</td>
+                <td>${acct?`<span class="account-pill">${acct}</span>`:''}</td>
+                <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="removeTripTx(${trip.id},${t.id})">Remove</button></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>` : `<div class="empty-state" style="padding:20px;"><div class="empty-text">No expenses found in this date range.</div></div>`}
+        </div>
+
+        <div style="margin-top:10px;padding:9px 14px;background:rgba(181,242,58,0.04);border:1px solid rgba(181,242,58,0.12);border-radius:8px;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">
+            💡 Right-click any transaction on the Transactions page and choose <strong style="color:var(--accent);">✈ Add to Trip</strong> to attach pre-trip expenses.
+          </div>
         </div>
       </div>
 
-      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:12px;">
-        <div style="padding:12px 16px;background:var(--surface2);font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
-          Transactions in trip date range
-        </div>
-        ${allTripTx.length > 0 ? `<table class="tx-table" style="margin:0;">
-          <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Account</th><th></th></tr></thead>
-          <tbody>${allTripTx.map(t => `<tr>
-            <td><span class="highlight-val">${t.date}</span></td>
-            <td style="font-size:12px;">${t.desc}</td>
-            <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'Unknown'}</span></td>
-            <td class="tx-amount expense">-${fmt(t.amount)}</td>
-            <td>${t.account?`<span class="account-pill">${t.account.replace('Wealthsimple Activities Export','Wealthsimple')}</span>`:''}</td>
-            <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="removeTripTx(${trip.id},${t.id})">Remove</button></td>
-          </tr>`).join('')}</tbody>
-        </table>` : `<div class="empty-state" style="padding:20px;"><div class="empty-text">No expenses found in this date range.</div></div>`}
-      </div>
-
-      <div style="margin-top:12px;padding:10px 14px;background:rgba(181,242,58,0.04);border:1px solid rgba(181,242,58,0.12);border-radius:8px;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">
-          💡 To attach a pre-trip expense (flight, hotel, etc.) — go to Transactions, right-click any transaction, and choose <strong style="color:var(--accent);">✈ Add to Trip</strong>.
-        </div>
-      </div>
     </div>`;
   }).join('');
 }
@@ -5633,9 +5679,10 @@ function loadState() {
       if (!state.bills)    state.bills    = [];
       if (!state.trips)    state.trips    = [];
       if (!state.hub)      state.hub      = {};
-      if (!state.vendorRules) state.vendorRules = {};
-      if (!state.typeRules) state.typeRules = {};
-      if (!state.tagColors) state.tagColors = {};
+      if (!state.vendorRules)  state.vendorRules  = {};
+      if (!state.typeRules)    state.typeRules    = {};
+      if (!state.tagColors)    state.tagColors    = {};
+      if (!state.tripCollapsed) state.tripCollapsed = {};
       return true;
     }
   } catch(e) {
