@@ -2241,46 +2241,86 @@ function deleteTransaction(id) {
 // ─── Right-click context menu ────────────────────────────────────────────────
 let ctxTxId = null;
 
+function ctxSwitchTab(tab) {
+  ['cat','type','more'].forEach(name => {
+    const tabEl  = $('ctx-tab-'   + name);
+    const panel  = $('ctx-panel-' + name);
+    const active = name === tab;
+    if (tabEl)  tabEl.classList.toggle('ctx-tab-active', active);
+    if (panel)  panel.style.display = active ? 'block' : 'none';
+  });
+}
+
 function openCtxMenu(e, txId) {
   e.preventDefault();
   ctxTxId = txId;
   const t = state.transactions.find(x => x.id === txId);
   if (!t) return;
 
-  const menu = $('ctx-menu');
-  const header = $('ctx-menu-header');
-  const catList = $('ctx-cat-list');
+  $('ctx-menu-header').textContent = t.desc.slice(0,42) + (t.desc.length > 42 ? '…' : '') + '  ·  ' + fmt(t.amount);
+  ctxSwitchTab('cat');
 
-  header.textContent = t.desc.slice(0,45) + (t.desc.length>45?'…':'') + '  ·  ' + fmt(t.amount);
-
-  // Find similar count for context
-  const key = normDesc(t.desc);
+  const key     = normDesc(t.desc);
   const similar = state.transactions.filter(x => x.id !== txId && normDesc(x.desc) === key);
 
-  catList.innerHTML = getCategoryList().map(c => `
-    <div class="ctx-item${c === t.category?' active-cat':''}"
-         onclick="ctxSetCategory('${c.replace(/'/g,"\'")}', false)"
-         style="padding:7px 14px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:space-between;">
-      <span>${c}</span>
-      ${c === t.category ? '<span style="font-size:10px;opacity:0.6;">✓ current</span>' : ''}
-    </div>`).join('') +
-    (similar.length > 0 ? `<div style="border-top:1px solid var(--border);padding:6px 14px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Apply to all ${similar.length+1} from this vendor</div>` +
-      getCategoryList().map(c => `
-        <div class="ctx-item${c === t.category?' active-cat':''}"
-             onclick="ctxSetCategory('${c.replace(/'/g,"\'")}', true)"
-             style="padding:7px 14px 7px 22px;cursor:pointer;font-size:12px;color:var(--accent3);">
-          ↳ "${c}" for all
-        </div>`).join('') : '');
+  // ── Category panel ───────────────────────────────────────────
+  $('ctx-panel-cat').innerHTML =
+    getCategoryList().map(c => `
+      <div class="ctx-item${c === t.category ? ' active-cat' : ''}"
+           onclick="ctxSetCategory('${c.replace(/'/g, "\\'")}', false)"
+           style="padding:7px 14px;font-size:12px;display:flex;align-items:center;justify-content:space-between;">
+        <span>${c}</span>
+        ${c === t.category ? '<span style="font-size:9px;opacity:0.5;">✓</span>' : ''}
+      </div>`).join('') +
+    (similar.length > 0
+      ? `<div style="border-top:1px solid var(--border);padding:5px 14px 3px;font-family:var(--mono);font-size:9px;color:var(--accent3);text-transform:uppercase;letter-spacing:1px;">Apply to all ${similar.length + 1} from vendor</div>` +
+        getCategoryList().map(c => `
+          <div class="ctx-item"
+               onclick="ctxSetCategory('${c.replace(/'/g, "\\'")}', true)"
+               style="padding:6px 14px 6px 22px;font-size:11px;color:var(--accent3);">
+            ↳ "${c}" for all
+          </div>`).join('')
+      : '');
 
-  // Show trip item only if trips exist
+  // ── Type panel ───────────────────────────────────────────────
+  const TYPES = [
+    { val: 'expense',       label: 'Expense',       color: 'var(--red)',     icon: '-' },
+    { val: 'income',        label: 'Income',         color: 'var(--accent)',  icon: '+' },
+    { val: 'invest',        label: 'Investment',     color: 'var(--accent3)', icon: '↓' },
+    { val: 'transfer',      label: 'Transfer',       color: 'var(--muted)',   icon: '⇄' },
+    { val: 'bank-transfer', label: 'Bank Transfer',  color: 'var(--muted)',   icon: '⇄' },
+  ];
+  $('ctx-panel-type').innerHTML =
+    TYPES.map(tp => `
+      <div class="ctx-item${tp.val === t.type ? ' active-cat' : ''}"
+           onclick="ctxSetType('${tp.val}', false)"
+           style="padding:8px 14px;font-size:12px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--mono);color:${tp.color};width:14px;text-align:center;">${tp.icon}</span>
+          ${tp.label}
+        </span>
+        ${tp.val === t.type ? '<span style="font-size:9px;opacity:0.5;">✓</span>' : ''}
+      </div>`).join('') +
+    (similar.length > 0
+      ? `<div style="border-top:1px solid var(--border);padding:5px 14px 3px;font-family:var(--mono);font-size:9px;color:var(--accent3);text-transform:uppercase;letter-spacing:1px;">Apply to all ${similar.length + 1} from vendor</div>` +
+        TYPES.map(tp => `
+          <div class="ctx-item"
+               onclick="ctxSetType('${tp.val}', true)"
+               style="padding:6px 14px 6px 22px;font-size:11px;color:var(--accent3);">
+            ↳ "${tp.label}" for all
+          </div>`).join('')
+      : '');
+
+  // ── More panel ───────────────────────────────────────────────
   const tripItem = $('ctx-trip-item');
   if (tripItem) tripItem.style.display = (state.trips && state.trips.length > 0) ? 'flex' : 'none';
 
-  // Position
-  const x = Math.min(e.clientX, window.innerWidth - 280);
-  const y = Math.min(e.clientY, window.innerHeight - 400);
-  menu.style.left = x + 'px';
-  menu.style.top  = y + 'px';
+  // Position — keep inside viewport
+  const x = Math.min(e.clientX, window.innerWidth  - 310);
+  const y = Math.min(e.clientY, window.innerHeight - 460);
+  const menu = $('ctx-menu');
+  menu.style.left    = x + 'px';
+  menu.style.top     = y + 'px';
   menu.style.display = 'block';
 }
 
