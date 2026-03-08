@@ -1399,7 +1399,13 @@
             <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Amount</span>
           </div>
           <table class="tx-table" id="csv-preview-table"></table>
-          <div style="margin-top:14px; display:flex; gap:10px;">
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <label style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;">Account name:</label>
+            <input type="text" class="form-input" id="import-account-override" placeholder="e.g. TD Aeroplan Visa"
+                   style="flex:1;max-width:260px;font-size:12px;" title="Override the account label for all transactions in this file">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Leave blank to use detected name</span>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;">
             <button class="btn btn-primary" onclick="importCSV()">Import All</button>
             <button class="btn btn-ghost" onclick="document.getElementById('csv-preview').style.display='none'; document.getElementById('detect-banner').style.display='none';">Cancel</button>
           </div>
@@ -1684,6 +1690,15 @@
           <input type="text" class="form-input" id="new-cat-input" placeholder="New category name…" style="flex:1;max-width:280px;font-size:13px;" onkeydown="if(event.key==='Enter') addCustomCategory()">
           <button class="btn btn-primary" onclick="addCustomCategory()">+ Add Category</button>
         </div>
+      </div>
+
+      <!-- ── Bulk Reassign Account ──────────────────────────────── -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title" style="margin-bottom:6px;">Reassign Account Tags</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+          Rename or reassign an account label across all matching transactions at once. Useful if transactions imported as "Generic CSV" or with the wrong account name.
+        </div>
+        <div id="account-reassign-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
 
       <!-- ── Tag Colours ──────────────────────────────────────── -->
@@ -4016,9 +4031,29 @@ const BANK_PROFILES = [
     detect() { return true; },
     parse(rows, headers) {
       const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
-      const di  = Math.max(hii('date'), 0);
-      const dsi = Math.max(hii('desc|payee|merchant|memo|narr'), 1);
-      const ai  = Math.max(hii('^amount$|debit|credit'), 2);
+
+      const di    = Math.max(hii('date'), 0);
+      const dsi   = Math.max(hii('desc|payee|merchant|memo|narr|detail'), 1);
+
+      // Check for separate debit/credit columns (common in bank exports)
+      const debiti  = hii('^debit$|^withdrawals?$|^charges?$');
+      const crediti  = hii('^credit$|^deposits?$|^payments?$');
+      const amti    = hii('^amount$|^amt$');
+
+      if (debiti >= 0 && crediti >= 0) {
+        // Two-column format: debit = expense, credit = income/payment
+        return rows.map(r => {
+          const debit  = parseFloat((r[debiti] || '').replace(/[$,]/g, '')) || 0;
+          const credit = parseFloat((r[crediti] || '').replace(/[$,]/g, '')) || 0;
+          if (!debit && !credit) return null;
+          const rawAmt = credit > 0 ? credit : -debit;
+          const hint   = credit > 0 ? 'income' : 'expense';
+          return { date: r[di], desc: r[dsi], rawAmt: String(rawAmt), hint };
+        }).filter(Boolean);
+      }
+
+      // Single amount column — return raw, type resolved in importCSV
+      const ai = amti >= 0 ? amti : Math.max(hii('amount|debit|credit|charge'), 2);
       return rows.map(r => ({ date: r[di], desc: r[dsi], rawAmt: r[ai] }));
     }
   }
@@ -4086,10 +4121,13 @@ function handleCSVFile(file) {
 
 function showDetectBanner(profile) {
   const banner = $('detect-banner');
-  $('detect-icon').textContent = profile.icon;
+  $('detect-icon').textContent  = profile.icon;
   $('detect-label').textContent = profile.name + ' detected';
-  $('detect-desc').textContent = '— columns mapped automatically';
+  $('detect-desc').textContent  = '— columns mapped automatically';
   banner.style.display = 'flex';
+  // Pre-fill the account override with the detected profile name — user can change it
+  const ov = $('import-account-override');
+  if (ov) ov.value = profile.name === 'Generic CSV' ? '' : profile.name;
 }
 
 function renderCSVPreview() {
@@ -4234,9 +4272,12 @@ function importMultipleCSVFiles(files) {
 function importCSV() {
   let imported = 0, skipped = 0, bad = 0;
 
-  // Use detected bank profile to parse rows into normalised {date, desc, rawAmt}
   const profile = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
-  const parsed = profile.parse(csvRows, csvHeaders);
+  const parsed  = profile.parse(csvRows, csvHeaders);
+
+  // Account override: user-typed name takes priority, then profile name
+  const overrideEl = $('import-account-override');
+  const accountName = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : profile.name;
 
   // Build fingerprint set of existing transactions
   const existingKeys = new Set(
@@ -4259,19 +4300,26 @@ function importCSV() {
     const date   = normalizeDate(item.date);
 
     // Determine income vs expense:
-    // 1. Direct 'income'/'expense' hint from profile (e.g. WS activities export)
-    // 2. Keyword hint from profile (e.g. WS investing transaction type label)
-    // 3. Fall back to sign of raw amount
+    // 1. Direct hint from profile parser ('income','expense','invest','transfer')
+    // 2. Keyword hint string from profile
+    // 3. Signed amount — negative = expense, positive = income
+    // 4. No hint and positive amount = default expense (most statements are expenses),
+    //    unless description pattern strongly suggests income (salary, refund, deposit, etc.)
     let type;
-    if (['income','expense','invest','transfer'].includes(item.hint)) {
+    if (['income','expense','invest','transfer','bank-transfer'].includes(item.hint)) {
       type = item.hint;
     } else if (item.hint === 'xfer-in' || item.hint === 'xfer-out') {
-      type = 'transfer';  // cross-account — not spending or income
+      type = 'transfer';
     } else if (item.hint) {
       const h = item.hint.toLowerCase();
-      type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
+      type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus|refund|cashback/.test(h) ? 'income' : 'expense';
+    } else if (rawAmt < 0) {
+      type = 'expense';
     } else {
-      type = rawAmt >= 0 ? 'income' : 'expense';
+      // Positive amount with no hint — check description for income signals
+      const dl = (item.desc || '').toLowerCase();
+      const looksLikeIncome = /\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received|credit)\b/.test(dl);
+      type = looksLikeIncome ? 'income' : 'expense';
     }
 
     const key = makeDupeKey(date, item.desc, amount);
@@ -4285,7 +4333,7 @@ function importCSV() {
       amount,
       type,
       category: guessCategory(item.desc),
-      account:  item.account || profile.name,
+      account:  item.account || accountName,
       contact:  item.contact || extractContact(item.desc, type)
     });
     imported++;
@@ -5361,6 +5409,7 @@ function refreshSettings() {
     ).join('');
   }
   renderTagColorPickers();
+  renderAccountReassign();
 }
 
 function renderTagColorPickers() {
@@ -5428,6 +5477,95 @@ function clearTagColor(key) {
   renderTagColorPickers();
   refreshTransactions();
 }
+
+function renderAccountReassign() {
+  const el = $('account-reassign-list');
+  if (!el) return;
+
+  const counts = {};
+  state.transactions.forEach(t => {
+    const a = t.account || 'Unknown';
+    counts[a] = (counts[a] || 0) + 1;
+  });
+
+  const accounts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  if (accounts.length === 0) {
+    el.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);">No transactions imported yet.</span>`;
+    return;
+  }
+
+  // Count how many transactions are suspiciously typed as income (no income keyword, not WS/Simplii)
+  const suspectCount = state.transactions.filter(t => {
+    if (t.type !== 'income') return false;
+    const dl = (t.desc || '').toLowerCase();
+    return !/\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received)\b/.test(dl)
+        && !/wealthsimple|simplii|e-transfer receive/i.test(t.desc || '');
+  }).length;
+
+  el.innerHTML = (suspectCount > 0 ? `
+    <div style="padding:12px 14px;background:rgba(242,200,58,0.08);border:1px solid rgba(242,200,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;">⚠ ${suspectCount} transactions may be incorrectly typed as Income</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like expenses but have a positive amount — common with PDF-converted CSVs.</div>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px;" onclick="repairGenericIncomeTypes()">Fix Now</button>
+    </div>` : '') +
+
+    accounts.map(([name, count]) => `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+      <span class="account-pill" style="flex-shrink:0;">${name}</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;">${count} transaction${count!==1?'s':''}</span>
+      <input type="text" class="form-input" id="reassign-input-${encodeURIComponent(name)}"
+             placeholder="New account name…"
+             style="flex:1;min-width:180px;max-width:280px;font-size:12px;">
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;flex-shrink:0;"
+              onclick="bulkReassignAccount('${name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">Rename All</button>
+    </div>`).join('');
+}
+
+function bulkReassignAccount(oldName) {
+  const inputId = 'reassign-input-' + encodeURIComponent(oldName);
+  const input   = document.getElementById(inputId);
+  const newName = input ? input.value.trim() : '';
+  if (!newName) { showToast('Enter a new account name first.'); return; }
+  if (newName === oldName) { showToast('Name is the same — nothing changed.'); return; }
+
+  let count = 0;
+  state.transactions.forEach(t => {
+    if (t.account === oldName) { t.account = newName; count++; }
+  });
+  saveState();
+  refreshSettings();
+  refreshTransactions();
+  showToast(`"${oldName}" → "${newName}" on ${count} transaction${count!==1?'s':''}.`);
+}
+
+function repairGenericIncomeTypes() {
+  const INCOME_SIGNALS = /\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received)\b/i;
+  const KNOWN_INCOME_ACCTS = /wealthsimple|simplii/i;
+
+  let fixed = 0;
+  state.transactions.forEach(t => {
+    if (t.type !== 'income') return;
+    const desc = t.desc || '';
+    if (INCOME_SIGNALS.test(desc)) return;       // genuinely income
+    if (KNOWN_INCOME_ACCTS.test(t.account || '')) return; // WS/Simplii handled correctly
+    if (/e-transfer receive/i.test(desc)) return;         // real e-transfer income
+    // Reclassify as expense
+    t.type = 'expense';
+    fixed++;
+  });
+
+  if (fixed === 0) { showToast('No suspicious income transactions found.'); return; }
+  saveState();
+  refreshSettings();
+  refreshTransactions();
+  refreshDashboard();
+  showToast(`Fixed ${fixed} transaction${fixed!==1?'s':''} — changed from Income to Expense.`);
+}
+
+function renderAccountReassign_placeholder() {} // marker
 
 function addCustomCategory() {
   const input = $('new-cat-input');
