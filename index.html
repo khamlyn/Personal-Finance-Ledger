@@ -1402,7 +1402,13 @@
             <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Amount</span>
           </div>
           <table class="tx-table" id="csv-preview-table"></table>
-          <div style="margin-top:14px; display:flex; gap:10px;">
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <label style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;">Account name:</label>
+            <input type="text" class="form-input" id="import-account-override" placeholder="e.g. TD Aeroplan Visa"
+                   style="flex:1;max-width:260px;font-size:12px;" title="Override the account label for all transactions in this file">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Leave blank to use detected name</span>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;">
             <button class="btn btn-primary" onclick="importCSV()">Import All</button>
             <button class="btn btn-ghost" onclick="document.getElementById('csv-preview').style.display='none'; document.getElementById('detect-banner').style.display='none';">Cancel</button>
           </div>
@@ -1687,6 +1693,15 @@
           <input type="text" class="form-input" id="new-cat-input" placeholder="New category name…" style="flex:1;max-width:280px;font-size:13px;" onkeydown="if(event.key==='Enter') addCustomCategory()">
           <button class="btn btn-primary" onclick="addCustomCategory()">+ Add Category</button>
         </div>
+      </div>
+
+      <!-- ── Reassign Account Tags ────────────────────────────── -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title" style="margin-bottom:6px;">Reassign Account Tags</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+          Rename an account label across all matching transactions at once. Useful when transactions imported as "Generic CSV" or with the wrong name. Also detects and fixes expenses that were imported as Income.
+        </div>
+        <div id="account-reassign-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
 
       <!-- ── Tag Colours ──────────────────────────────────────── -->
@@ -4115,10 +4130,12 @@ function handleCSVFile(file) {
 
 function showDetectBanner(profile) {
   const banner = $('detect-banner');
-  $('detect-icon').textContent = profile.icon;
+  $('detect-icon').textContent  = profile.icon;
   $('detect-label').textContent = profile.name + ' detected';
-  $('detect-desc').textContent = '— columns mapped automatically';
+  $('detect-desc').textContent  = '— columns mapped automatically';
   banner.style.display = 'flex';
+  const ov = $('import-account-override');
+  if (ov) ov.value = profile.name === 'Generic CSV' ? '' : profile.name;
 }
 
 function renderCSVPreview() {
@@ -4263,11 +4280,11 @@ function importMultipleCSVFiles(files) {
 function importCSV() {
   let imported = 0, skipped = 0, bad = 0;
 
-  // Use detected bank profile to parse rows into normalised {date, desc, rawAmt}
-  const profile = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
-  const parsed = profile.parse(csvRows, csvHeaders);
+  const profile      = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
+  const parsed       = profile.parse(csvRows, csvHeaders);
+  const overrideEl   = $('import-account-override');
+  const accountName  = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : profile.name;
 
-  // Build fingerprint set of existing transactions
   const existingKeys = new Set(
     state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount))
   );
@@ -4299,8 +4316,19 @@ function importCSV() {
     } else if (item.hint) {
       const h = item.hint.toLowerCase();
       type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
+    } else if (rawAmt < 0) {
+      type = 'expense';
     } else {
-      type = rawAmt >= 0 ? 'income' : 'expense';
+      // Positive amount with no hint — CC accounts default to expense; chequing to income
+      const dl  = (item.desc || '').toLowerCase();
+      const acn = accountName.toLowerCase();
+      const isCC = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|generic/i.test(acn);
+      const realIncome  = /(salary|payroll|paycheck|e.?transfer.*(receiv|in)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)/i.test(dl);
+      const ccPayment   = /(payment|thank.?you)/i.test(dl);
+      if (realIncome)       type = 'income';
+      else if (isCC && ccPayment) type = 'transfer';
+      else if (isCC)        type = 'expense';
+      else                  type = 'income';
     }
 
     const key = makeDupeKey(date, item.desc, amount);
@@ -4314,7 +4342,7 @@ function importCSV() {
       amount,
       type,
       category: guessCategory(item.desc),
-      account:  item.account || profile.name,
+      account:  item.account || accountName,
       contact:  item.contact || extractContact(item.desc, type)
     });
     imported++;
@@ -5390,6 +5418,7 @@ function refreshSettings() {
     ).join('');
   }
   renderTagColorPickers();
+  renderAccountReassign();
 }
 
 function renderTagColorPickers() {
@@ -5456,6 +5485,83 @@ function clearTagColor(key) {
   saveState();
   renderTagColorPickers();
   refreshTransactions();
+}
+
+function renderAccountReassign() {
+  const el = $('account-reassign-list');
+  if (!el) return;
+
+  const counts = {};
+  state.transactions.forEach(t => { const a = t.account || 'Unknown'; counts[a] = (counts[a]||0)+1; });
+  const accounts = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+
+  if (accounts.length === 0) {
+    el.innerHTML = '<span style="font-family:var(--mono);font-size:11px;color:var(--muted);">No transactions imported yet.</span>';
+    return;
+  }
+
+  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
+  const GENERIC_ACCTS = /generic.?csv/i;
+  const REAL_INCOME   = /(salary|payroll|paycheck|e.?transfer.*(receiv|in)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)/i;
+  const CC_PAYMENT_IN = /(payment|thank.?you|credit|deposit)/i;
+
+  const suspectCount = state.transactions.filter(t => {
+    if (t.type !== 'income') return false;
+    const acct = t.account || '';
+    const desc = t.desc || '';
+    if (CC_ACCOUNTS.test(acct) || GENERIC_ACCTS.test(acct))
+      return !REAL_INCOME.test(desc) && !CC_PAYMENT_IN.test(desc);
+    return false;
+  }).length;
+
+  el.innerHTML = (suspectCount > 0 ? `
+    <div style="padding:12px 14px;background:rgba(242,200,58,0.08);border:1px solid rgba(242,200,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;">⚠ ${suspectCount} transactions may be incorrectly typed as Income</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like credit card expenses imported with the wrong sign. Click Fix Now to reclassify them.</div>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px;" onclick="repairGenericIncomeTypes()">Fix Now</button>
+    </div>` : '') +
+    accounts.map(([name, count]) => `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+      <span class="account-pill" style="flex-shrink:0;">${name}</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;">${count} transaction${count!==1?'s':''}</span>
+      <input type="text" class="form-input" id="reassign-input-${encodeURIComponent(name)}"
+             placeholder="New account name…" style="flex:1;min-width:180px;max-width:280px;font-size:12px;">
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;flex-shrink:0;"
+              onclick="bulkReassignAccount('${name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">Rename All</button>
+    </div>`).join('');
+}
+
+function bulkReassignAccount(oldName) {
+  const input = document.getElementById('reassign-input-' + encodeURIComponent(oldName));
+  const newName = input ? input.value.trim() : '';
+  if (!newName) { showToast('Enter a new account name first.'); return; }
+  if (newName === oldName) { showToast('Name is the same — nothing changed.'); return; }
+  let count = 0;
+  state.transactions.forEach(t => { if (t.account === oldName) { t.account = newName; count++; } });
+  saveState(); refreshSettings(); refreshTransactions();
+  showToast('"' + oldName + '" → "' + newName + '" on ' + count + ' transaction' + (count!==1?'s':'') + '.');
+}
+
+function repairGenericIncomeTypes() {
+  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
+  const GENERIC_ACCTS = /generic.?csv/i;
+  const REAL_INCOME   = /(salary|payroll|paycheck|e.?transfer.*(receiv|in)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)/i;
+  const CC_PAYMENT_IN = /(payment|thank.?you)/i;
+  let fixed = 0;
+  state.transactions.forEach(t => {
+    if (t.type !== 'income') return;
+    const acct = t.account || '';
+    const desc = t.desc   || '';
+    if (!CC_ACCOUNTS.test(acct) && !GENERIC_ACCTS.test(acct)) return;
+    if (REAL_INCOME.test(desc)) return;
+    if (CC_PAYMENT_IN.test(desc)) { t.type = 'transfer'; fixed++; return; }
+    t.type = 'expense'; fixed++;
+  });
+  if (fixed === 0) { showToast('No mistyped income transactions found.'); return; }
+  saveState(); refreshSettings(); refreshTransactions(); refreshDashboard();
+  showToast('Fixed ' + fixed + ' transaction' + (fixed!==1?'s':'') + ' — reclassified from Income to Expense/Transfer.');
 }
 
 function addCustomCategory() {
