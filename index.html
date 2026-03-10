@@ -1249,7 +1249,10 @@
           </tbody>
         </table>
       </div>
-      <div id="tx-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;text-align:right;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+        <div id="tx-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
+        <button id="bulk-delete-btn" class="btn btn-danger" style="display:none;font-size:11px;padding:4px 10px;" onclick="bulkDeleteFiltered()">⚠ Delete matching transactions</button>
+      </div>
     </div>
 
     <!-- ═══════════ BUDGET ═══════════ -->
@@ -1399,13 +1402,7 @@
             <span style="font-family:var(--mono); font-size:10px; color:var(--muted)">= Amount</span>
           </div>
           <table class="tx-table" id="csv-preview-table"></table>
-          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <label style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;">Account name:</label>
-            <input type="text" class="form-input" id="import-account-override" placeholder="e.g. TD Aeroplan Visa"
-                   style="flex:1;max-width:260px;font-size:12px;" title="Override the account label for all transactions in this file">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Leave blank to use detected name</span>
-          </div>
-          <div style="margin-top:10px;display:flex;gap:10px;">
+          <div style="margin-top:14px; display:flex; gap:10px;">
             <button class="btn btn-primary" onclick="importCSV()">Import All</button>
             <button class="btn btn-ghost" onclick="document.getElementById('csv-preview').style.display='none'; document.getElementById('detect-banner').style.display='none';">Cancel</button>
           </div>
@@ -1690,15 +1687,6 @@
           <input type="text" class="form-input" id="new-cat-input" placeholder="New category name…" style="flex:1;max-width:280px;font-size:13px;" onkeydown="if(event.key==='Enter') addCustomCategory()">
           <button class="btn btn-primary" onclick="addCustomCategory()">+ Add Category</button>
         </div>
-      </div>
-
-      <!-- ── Bulk Reassign Account ──────────────────────────────── -->
-      <div class="chart-card" style="margin-bottom:24px;">
-        <div class="chart-card-title" style="margin-bottom:6px;">Reassign Account Tags</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
-          Rename or reassign an account label across all matching transactions at once. Useful if transactions imported as "Generic CSV" or with the wrong account name.
-        </div>
-        <div id="account-reassign-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
 
       <!-- ── Tag Colours ──────────────────────────────────────── -->
@@ -2270,6 +2258,19 @@ function deleteTransaction(id) {
   refreshDashboard();
 }
 
+function bulkDeleteFiltered() {
+  const btn = $('bulk-delete-btn');
+  const ids = JSON.parse(btn.dataset.ids || '[]');
+  if (ids.length === 0) return;
+  if (!confirm('Permanently delete ' + ids.length + ' transaction' + (ids.length !== 1 ? 's' : '') + '? This cannot be undone.')) return;
+  const idSet = new Set(ids);
+  state.transactions = state.transactions.filter(t => !idSet.has(t.id));
+  saveState();
+  refreshTransactions();
+  refreshDashboard();
+  showToast(ids.length + ' transaction' + (ids.length !== 1 ? 's' : '') + ' deleted.');
+}
+
 // ─── Right-click context menu ────────────────────────────────────────────────
 let ctxTxId = null;
 
@@ -2630,6 +2631,19 @@ function refreshTransactions() {
 
   const countEl = $('tx-count');
   if (countEl) countEl.textContent = filtered.length + ' transaction' + (filtered.length !== 1 ? 's' : '');
+
+  // Show bulk-delete button only when filters are active
+  const bulkBtn = $('bulk-delete-btn');
+  if (bulkBtn) {
+    const hasFilter = search || catF || acctF || txFilter !== 'all';
+    if (hasFilter && filtered.length > 0) {
+      bulkBtn.style.display = 'inline-flex';
+      bulkBtn.textContent = '⚠ Delete ' + filtered.length + ' matching transaction' + (filtered.length !== 1 ? 's' : '');
+      bulkBtn.dataset.ids = JSON.stringify(filtered.map(t => t.id));
+    } else {
+      bulkBtn.style.display = 'none';
+    }
+  }
 
   const body = $('tx-body');
   if (filtered.length === 0) {
@@ -4031,29 +4045,9 @@ const BANK_PROFILES = [
     detect() { return true; },
     parse(rows, headers) {
       const hii = pat => headers.findIndex(x => new RegExp(pat,'i').test(x.trim()));
-
-      const di    = Math.max(hii('date'), 0);
-      const dsi   = Math.max(hii('desc|payee|merchant|memo|narr|detail'), 1);
-
-      // Check for separate debit/credit columns (common in bank exports)
-      const debiti  = hii('^debit$|^withdrawals?$|^charges?$');
-      const crediti  = hii('^credit$|^deposits?$|^payments?$');
-      const amti    = hii('^amount$|^amt$');
-
-      if (debiti >= 0 && crediti >= 0) {
-        // Two-column format: debit = expense, credit = income/payment
-        return rows.map(r => {
-          const debit  = parseFloat((r[debiti] || '').replace(/[$,]/g, '')) || 0;
-          const credit = parseFloat((r[crediti] || '').replace(/[$,]/g, '')) || 0;
-          if (!debit && !credit) return null;
-          const rawAmt = credit > 0 ? credit : -debit;
-          const hint   = credit > 0 ? 'income' : 'expense';
-          return { date: r[di], desc: r[dsi], rawAmt: String(rawAmt), hint };
-        }).filter(Boolean);
-      }
-
-      // Single amount column — return raw, type resolved in importCSV
-      const ai = amti >= 0 ? amti : Math.max(hii('amount|debit|credit|charge'), 2);
+      const di  = Math.max(hii('date'), 0);
+      const dsi = Math.max(hii('desc|payee|merchant|memo|narr'), 1);
+      const ai  = Math.max(hii('^amount$|debit|credit'), 2);
       return rows.map(r => ({ date: r[di], desc: r[dsi], rawAmt: r[ai] }));
     }
   }
@@ -4121,13 +4115,10 @@ function handleCSVFile(file) {
 
 function showDetectBanner(profile) {
   const banner = $('detect-banner');
-  $('detect-icon').textContent  = profile.icon;
+  $('detect-icon').textContent = profile.icon;
   $('detect-label').textContent = profile.name + ' detected';
-  $('detect-desc').textContent  = '— columns mapped automatically';
+  $('detect-desc').textContent = '— columns mapped automatically';
   banner.style.display = 'flex';
-  // Pre-fill the account override with the detected profile name — user can change it
-  const ov = $('import-account-override');
-  if (ov) ov.value = profile.name === 'Generic CSV' ? '' : profile.name;
 }
 
 function renderCSVPreview() {
@@ -4272,12 +4263,9 @@ function importMultipleCSVFiles(files) {
 function importCSV() {
   let imported = 0, skipped = 0, bad = 0;
 
+  // Use detected bank profile to parse rows into normalised {date, desc, rawAmt}
   const profile = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
-  const parsed  = profile.parse(csvRows, csvHeaders);
-
-  // Account override: user-typed name takes priority, then profile name
-  const overrideEl = $('import-account-override');
-  const accountName = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : profile.name;
+  const parsed = profile.parse(csvRows, csvHeaders);
 
   // Build fingerprint set of existing transactions
   const existingKeys = new Set(
@@ -4300,38 +4288,19 @@ function importCSV() {
     const date   = normalizeDate(item.date);
 
     // Determine income vs expense:
-    // 1. Direct hint from profile parser ('income','expense','invest','transfer')
-    // 2. Keyword hint string from profile
-    // 3. Signed amount — negative = expense, positive = income
-    // 4. No hint and positive amount = default expense (most statements are expenses),
-    //    unless description pattern strongly suggests income (salary, refund, deposit, etc.)
+    // 1. Direct 'income'/'expense' hint from profile (e.g. WS activities export)
+    // 2. Keyword hint from profile (e.g. WS investing transaction type label)
+    // 3. Fall back to sign of raw amount
     let type;
-    if (['income','expense','invest','transfer','bank-transfer'].includes(item.hint)) {
+    if (['income','expense','invest','transfer'].includes(item.hint)) {
       type = item.hint;
     } else if (item.hint === 'xfer-in' || item.hint === 'xfer-out') {
-      type = 'transfer';
+      type = 'transfer';  // cross-account — not spending or income
     } else if (item.hint) {
       const h = item.hint.toLowerCase();
-      type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus|refund|cashback/.test(h) ? 'income' : 'expense';
-    } else if (rawAmt < 0) {
-      type = 'expense';
+      type = /deposit|dividend|interest|credit|sell|income|transfer.?in|bonus/.test(h) ? 'income' : 'expense';
     } else {
-      // Positive amount with no hint — use account name and description to decide
-      const dl   = (item.desc    || '').toLowerCase();
-      const acct = (accountName  || '').toLowerCase();
-      const isCCAccount = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|generic/i.test(acct);
-      const looksLikeIncome = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i.test(dl);
-      const looksLikeCCPayment = /\b(payment|thank.?you|credit|deposit)\b/i.test(dl);
-
-      if (looksLikeIncome) {
-        type = 'income';
-      } else if (isCCAccount && looksLikeCCPayment) {
-        type = 'transfer'; // payment to the card
-      } else if (isCCAccount) {
-        type = 'expense';  // CC purchases are always expenses
-      } else {
-        type = 'income';   // non-CC positive amount = income (e.g. chequing deposit)
-      }
+      type = rawAmt >= 0 ? 'income' : 'expense';
     }
 
     const key = makeDupeKey(date, item.desc, amount);
@@ -4345,7 +4314,7 @@ function importCSV() {
       amount,
       type,
       category: guessCategory(item.desc),
-      account:  item.account || accountName,
+      account:  item.account || profile.name,
       contact:  item.contact || extractContact(item.desc, type)
     });
     imported++;
@@ -5421,7 +5390,6 @@ function refreshSettings() {
     ).join('');
   }
   renderTagColorPickers();
-  renderAccountReassign();
 }
 
 function renderTagColorPickers() {
@@ -5489,119 +5457,6 @@ function clearTagColor(key) {
   renderTagColorPickers();
   refreshTransactions();
 }
-
-function renderAccountReassign() {
-  const el = $('account-reassign-list');
-  if (!el) return;
-
-  const counts = {};
-  state.transactions.forEach(t => {
-    const a = t.account || 'Unknown';
-    counts[a] = (counts[a] || 0) + 1;
-  });
-
-  const accounts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-  if (accounts.length === 0) {
-    el.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);">No transactions imported yet.</span>`;
-    return;
-  }
-
-  // Identify transactions that are typed as income but look like CC expenses
-  // Logic: income is correct ONLY if desc strongly signals a real credit/payment in,
-  // or if the account is a known bank/investment account (not a credit card)
-  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
-  const GENERIC_ACCTS = /generic.?csv/i;
-  const REAL_INCOME   = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i;
-  const CC_PAYMENT_IN = /\b(payment|thank.?you|credit|deposit)\b/i; // payments TO the card — actually income/transfer on CC
-
-  const suspectCount = state.transactions.filter(t => {
-    if (t.type !== 'income') return false;
-    const acct = t.account || '';
-    const desc = t.desc || '';
-    // Always suspect if from a known CC account and not a real income signal
-    if (CC_ACCOUNTS.test(acct) || GENERIC_ACCTS.test(acct)) {
-      return !REAL_INCOME.test(desc) && !CC_PAYMENT_IN.test(desc);
-    }
-    return false;
-  }).length;
-
-  el.innerHTML = (suspectCount > 0 ? `
-    <div style="padding:12px 14px;background:rgba(242,200,58,0.08);border:1px solid rgba(242,200,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:13px;font-weight:500;">⚠ ${suspectCount} transactions may be incorrectly typed as Income</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like credit card expenses imported with the wrong sign. Click Fix Now to reclassify them.</div>
-      </div>
-      <button class="btn btn-primary" style="font-size:12px;" onclick="repairGenericIncomeTypes()">Fix Now</button>
-    </div>` : '') +
-
-    accounts.map(([name, count]) => `
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
-      <span class="account-pill" style="flex-shrink:0;">${name}</span>
-      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;">${count} transaction${count!==1?'s':''}</span>
-      <input type="text" class="form-input" id="reassign-input-${encodeURIComponent(name)}"
-             placeholder="New account name…"
-             style="flex:1;min-width:180px;max-width:280px;font-size:12px;">
-      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;flex-shrink:0;"
-              onclick="bulkReassignAccount('${name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">Rename All</button>
-    </div>`).join('');
-}
-
-function bulkReassignAccount(oldName) {
-  const inputId = 'reassign-input-' + encodeURIComponent(oldName);
-  const input   = document.getElementById(inputId);
-  const newName = input ? input.value.trim() : '';
-  if (!newName) { showToast('Enter a new account name first.'); return; }
-  if (newName === oldName) { showToast('Name is the same — nothing changed.'); return; }
-
-  let count = 0;
-  state.transactions.forEach(t => {
-    if (t.account === oldName) { t.account = newName; count++; }
-  });
-  saveState();
-  refreshSettings();
-  refreshTransactions();
-  showToast(`"${oldName}" → "${newName}" on ${count} transaction${count!==1?'s':''}.`);
-}
-
-function repairGenericIncomeTypes() {
-  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
-  const GENERIC_ACCTS = /generic.?csv/i;
-  const REAL_INCOME   = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i;
-  const CC_PAYMENT_IN = /\b(payment|thank.?you|credit|deposit)\b/i;
-
-  let fixed = 0;
-  state.transactions.forEach(t => {
-    if (t.type !== 'income') return;
-    const acct = t.account || '';
-    const desc = t.desc  || '';
-
-    // Only touch CC or Generic CSV accounts — leave WS/Simplii/chequing alone
-    if (!CC_ACCOUNTS.test(acct) && !GENERIC_ACCTS.test(acct)) return;
-
-    // Keep as income if it's a real income signal or a CC payment coming in (transfer)
-    if (REAL_INCOME.test(desc)) return;
-    if (CC_PAYMENT_IN.test(desc)) {
-      // Tag as transfer rather than income — it's a payment TO the card
-      t.type = 'transfer';
-      fixed++;
-      return;
-    }
-
-    // Everything else on a CC account: expense
-    t.type = 'expense';
-    fixed++;
-  });
-
-  if (fixed === 0) { showToast('No mistyped income transactions found.'); return; }
-  saveState();
-  refreshSettings();
-  refreshTransactions();
-  refreshDashboard();
-  showToast(`Fixed ${fixed} transaction${fixed!==1?'s':''} — reclassified from Income to Expense/Transfer.`);
-}
-
-function renderAccountReassign_placeholder() {} // marker
 
 function addCustomCategory() {
   const input = $('new-cat-input');
