@@ -4316,10 +4316,22 @@ function importCSV() {
     } else if (rawAmt < 0) {
       type = 'expense';
     } else {
-      // Positive amount with no hint — check description for income signals
-      const dl = (item.desc || '').toLowerCase();
-      const looksLikeIncome = /\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received|credit)\b/.test(dl);
-      type = looksLikeIncome ? 'income' : 'expense';
+      // Positive amount with no hint — use account name and description to decide
+      const dl   = (item.desc    || '').toLowerCase();
+      const acct = (accountName  || '').toLowerCase();
+      const isCCAccount = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|generic/i.test(acct);
+      const looksLikeIncome = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i.test(dl);
+      const looksLikeCCPayment = /\b(payment|thank.?you|credit|deposit)\b/i.test(dl);
+
+      if (looksLikeIncome) {
+        type = 'income';
+      } else if (isCCAccount && looksLikeCCPayment) {
+        type = 'transfer'; // payment to the card
+      } else if (isCCAccount) {
+        type = 'expense';  // CC purchases are always expenses
+      } else {
+        type = 'income';   // non-CC positive amount = income (e.g. chequing deposit)
+      }
     }
 
     const key = makeDupeKey(date, item.desc, amount);
@@ -5495,19 +5507,30 @@ function renderAccountReassign() {
     return;
   }
 
-  // Count how many transactions are suspiciously typed as income (no income keyword, not WS/Simplii)
+  // Identify transactions that are typed as income but look like CC expenses
+  // Logic: income is correct ONLY if desc strongly signals a real credit/payment in,
+  // or if the account is a known bank/investment account (not a credit card)
+  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
+  const GENERIC_ACCTS = /generic.?csv/i;
+  const REAL_INCOME   = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i;
+  const CC_PAYMENT_IN = /\b(payment|thank.?you|credit|deposit)\b/i; // payments TO the card — actually income/transfer on CC
+
   const suspectCount = state.transactions.filter(t => {
     if (t.type !== 'income') return false;
-    const dl = (t.desc || '').toLowerCase();
-    return !/\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received)\b/.test(dl)
-        && !/wealthsimple|simplii|e-transfer receive/i.test(t.desc || '');
+    const acct = t.account || '';
+    const desc = t.desc || '';
+    // Always suspect if from a known CC account and not a real income signal
+    if (CC_ACCOUNTS.test(acct) || GENERIC_ACCTS.test(acct)) {
+      return !REAL_INCOME.test(desc) && !CC_PAYMENT_IN.test(desc);
+    }
+    return false;
   }).length;
 
   el.innerHTML = (suspectCount > 0 ? `
     <div style="padding:12px 14px;background:rgba(242,200,58,0.08);border:1px solid rgba(242,200,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
         <div style="font-size:13px;font-weight:500;">⚠ ${suspectCount} transactions may be incorrectly typed as Income</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like expenses but have a positive amount — common with PDF-converted CSVs.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like credit card expenses imported with the wrong sign. Click Fix Now to reclassify them.</div>
       </div>
       <button class="btn btn-primary" style="font-size:12px;" onclick="repairGenericIncomeTypes()">Fix Now</button>
     </div>` : '') +
@@ -5542,27 +5565,40 @@ function bulkReassignAccount(oldName) {
 }
 
 function repairGenericIncomeTypes() {
-  const INCOME_SIGNALS = /\b(salary|payroll|paycheck|direct.?deposit|deposit|refund|rebate|cashback|cash.?back|dividend|interest|bonus|tax.?return|e.?transfer.*receive|payment.?received)\b/i;
-  const KNOWN_INCOME_ACCTS = /wealthsimple|simplii/i;
+  const CC_ACCOUNTS   = /aeroplan|visa|mastercard|amex|credit.?card|td.?card|cibc|scotiabank.?visa|pc.?financial/i;
+  const GENERIC_ACCTS = /generic.?csv/i;
+  const REAL_INCOME   = /\b(salary|payroll|paycheck|e.?transfer.*(receiv|in\b)|payment.?received|tax.?return|refund|rebate|cashback|cash.?back|dividend|interest earned|bonus)\b/i;
+  const CC_PAYMENT_IN = /\b(payment|thank.?you|credit|deposit)\b/i;
 
   let fixed = 0;
   state.transactions.forEach(t => {
     if (t.type !== 'income') return;
-    const desc = t.desc || '';
-    if (INCOME_SIGNALS.test(desc)) return;       // genuinely income
-    if (KNOWN_INCOME_ACCTS.test(t.account || '')) return; // WS/Simplii handled correctly
-    if (/e-transfer receive/i.test(desc)) return;         // real e-transfer income
-    // Reclassify as expense
+    const acct = t.account || '';
+    const desc = t.desc  || '';
+
+    // Only touch CC or Generic CSV accounts — leave WS/Simplii/chequing alone
+    if (!CC_ACCOUNTS.test(acct) && !GENERIC_ACCTS.test(acct)) return;
+
+    // Keep as income if it's a real income signal or a CC payment coming in (transfer)
+    if (REAL_INCOME.test(desc)) return;
+    if (CC_PAYMENT_IN.test(desc)) {
+      // Tag as transfer rather than income — it's a payment TO the card
+      t.type = 'transfer';
+      fixed++;
+      return;
+    }
+
+    // Everything else on a CC account: expense
     t.type = 'expense';
     fixed++;
   });
 
-  if (fixed === 0) { showToast('No suspicious income transactions found.'); return; }
+  if (fixed === 0) { showToast('No mistyped income transactions found.'); return; }
   saveState();
   refreshSettings();
   refreshTransactions();
   refreshDashboard();
-  showToast(`Fixed ${fixed} transaction${fixed!==1?'s':''} — changed from Income to Expense.`);
+  showToast(`Fixed ${fixed} transaction${fixed!==1?'s':''} — reclassified from Income to Expense/Transfer.`);
 }
 
 function renderAccountReassign_placeholder() {} // marker
