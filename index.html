@@ -366,6 +366,7 @@
   }
 
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .active-range { background: rgba(181,242,58,0.12) !important; color: var(--accent) !important; border-color: rgba(181,242,58,0.35) !important; }
 
   .btn-danger {
     background: rgba(242,90,58,0.1);
@@ -616,6 +617,14 @@
 
   /* TOAST */
   .ctx-item:hover { background: var(--surface2); }
+.tx-note-pill {
+  display: inline-block; cursor: pointer; padding: 2px 8px;
+  background: rgba(181,242,58,0.08); color: var(--accent);
+  border: 1px solid rgba(181,242,58,0.2); border-radius: 10px;
+  font-family: var(--mono); font-size: 10px; white-space: nowrap;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis;
+}
+.tx-note-pill:hover { background: rgba(181,242,58,0.15); }
 .ctx-item.active-cat { color: var(--accent); font-weight: 600; }
 .ctx-tab { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); transition: all 0.15s; }
 .ctx-tab:hover { background: var(--surface2); color: var(--text); }
@@ -1212,6 +1221,22 @@
         <!-- invest trades excluded from transactions — visible in Holdings tab -->
       </div>
 
+      <!-- Date range filter -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Range:</span>
+        <button class="btn btn-ghost tx-range-btn active-range" data-range="all"    onclick="setTxRange('all',this)"    style="font-size:11px;padding:4px 10px;">All Time</button>
+        <button class="btn btn-ghost tx-range-btn"              data-range="month"  onclick="setTxRange('month',this)"  style="font-size:11px;padding:4px 10px;">This Month</button>
+        <button class="btn btn-ghost tx-range-btn"              data-range="3m"     onclick="setTxRange('3m',this)"     style="font-size:11px;padding:4px 10px;">3 Months</button>
+        <button class="btn btn-ghost tx-range-btn"              data-range="6m"     onclick="setTxRange('6m',this)"     style="font-size:11px;padding:4px 10px;">6 Months</button>
+        <button class="btn btn-ghost tx-range-btn"              data-range="year"   onclick="setTxRange('year',this)"   style="font-size:11px;padding:4px 10px;">This Year</button>
+        <button class="btn btn-ghost tx-range-btn"              data-range="custom" onclick="setTxRange('custom',this)" style="font-size:11px;padding:4px 10px;">Custom</button>
+        <span id="tx-custom-range" style="display:none;gap:6px;align-items:center;">
+          <input type="date" class="form-input" id="tx-range-from" style="font-size:11px;width:auto;" onchange="refreshTransactions()">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">→</span>
+          <input type="date" class="form-input" id="tx-range-to"   style="font-size:11px;width:auto;" onchange="refreshTransactions()">
+        </span>
+      </div>
+
       <!-- Sort + search controls -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
         <input type="text" class="form-input" id="tx-search" placeholder="Search description…" style="flex:1;min-width:160px;font-size:12px;" oninput="refreshTransactions()">
@@ -1241,6 +1266,7 @@
               <th>Type</th>
               <th onclick="setTxSort('amount-desc','amount-asc')" style="cursor:pointer;">Amount ↕</th>
               <th onclick="setTxSort('acct-asc','acct-desc')" style="cursor:pointer;">Account ↕</th>
+              <th>Notes</th>
               <th></th>
             </tr>
           </thead>
@@ -1368,7 +1394,7 @@
           <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account History → <strong style="color:var(--text)">Download → CSV (Quicken/Excel format)</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
-          <strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
+          <strong style="color:var(--accent)">🏦 OFX/QFX (TD, RBC, BMO, CIBC, Scotia):</strong> Online Banking → Download → <strong style="color:var(--text)">OFX or QFX format</strong> — works with all major banks<br><strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Credit Card (with headers):</strong> EasyWeb → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Aeroplan Visa:</strong> Online Banking → Credit Card → View account activity → <strong style="color:var(--text)">Download → CSV</strong> (select each date range, drop all files at once)<br>
           <strong style="color:var(--accent)">🔵 CIBC Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download → CSV</strong><br>
@@ -1379,8 +1405,8 @@
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" style="margin-bottom:12px;">
         <div class="drop-icon">⇡</div>
         <div class="drop-label">Drop one or more bank CSVs here or <span>click to browse</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Multiple files OK — useful for TD Aeroplan exports split by date range</div>
-        <input type="file" id="csv-file" accept=".csv" multiple style="display:none" onchange="handleFileList(this.files)">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">CSV, OFX, or QFX — drop one or more files at once</div>
+        <input type="file" id="csv-file" accept=".csv,.ofx,.qfx" multiple style="display:none" onchange="handleFileList(this.files)">
       </div>
 
       <div id="detect-banner" style="display:none; margin-bottom:12px; padding:12px 18px; border-radius:10px; background:rgba(181,242,58,0.08); border:1px solid rgba(181,242,58,0.25); font-size:13px; align-items:center; gap:10px;">
@@ -1719,6 +1745,23 @@
         <div>
           <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Category Tags</div>
           <div id="cat-color-list" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+        </div>
+      </div>
+      <!-- ── Backup & Restore ───────────────────────────────────── -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title" style="margin-bottom:6px;">Backup &amp; Restore</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+          Your data lives entirely in your browser. Export a backup regularly so you never lose it. You can restore a backup on any device.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <button class="btn btn-primary" onclick="exportBackupJSON()">⇣ Export Full Backup (.json)</button>
+          <button class="btn btn-ghost"   onclick="exportTransactionsCSV()">⇣ Export Transactions (.csv)</button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+          <label style="font-family:var(--mono);font-size:11px;color:var(--muted);">Restore from backup:</label>
+          <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="importBackupJSON(this.files[0])">
+          <button class="btn btn-ghost" onclick="document.getElementById('restore-file-input').click()">⇡ Import Backup (.json)</button>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--red);">⚠ This replaces all current data</span>
         </div>
       </div>
     </div>
@@ -2119,6 +2162,24 @@
   </div>
 </div>
 
+<!-- Split Transaction Modal -->
+<div class="modal-overlay" id="split-tx-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">Split Transaction</div>
+    <div id="split-tx-desc" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;"></div>
+    <div id="split-tx-total" style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:16px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;" id="split-rows-container">
+      <!-- rows injected by JS -->
+    </div>
+    <div id="split-remainder" style="font-family:var(--mono);font-size:11px;margin-top:10px;padding:8px 12px;border-radius:6px;background:var(--surface2);"></div>
+    <button class="btn btn-ghost" style="margin-top:10px;font-size:11px;" onclick="addSplitRow()">+ Add another split</button>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('split-tx-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSplit()">Split Transaction</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add to Trip Modal -->
 <div class="modal-overlay" id="add-to-trip-modal">
   <div class="modal" style="max-width:420px;">
@@ -2140,6 +2201,21 @@
   <div class="modal" style="max-width:580px;max-height:80vh;overflow-y:auto;">
     <div class="modal-title" id="contact-detail-name"></div>
     <div id="contact-detail-stats" style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;"></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Contact Rules — remembered for future imports</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-bottom:4px;">Label / Relationship</label>
+          <input type="text" class="form-input" id="contact-rule-label" placeholder="e.g. Mom, Roommate, Work" style="font-size:12px;width:100%;">
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-bottom:4px;">Default Category</label>
+          <select class="form-select" id="contact-rule-category" style="font-size:12px;width:100%;"></select>
+        </div>
+        <button class="btn btn-primary" style="font-size:12px;white-space:nowrap;" onclick="saveContactRule()">Save Rule</button>
+      </div>
+      <div id="contact-rule-status" style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-top:8px;display:none;"></div>
+    </div>
     <div class="chart-card" style="padding:0;overflow:hidden;">
       <table class="tx-table">
         <thead><tr><th>Date</th><th>Description</th><th>Direction</th><th>Amount</th><th>Account</th></tr></thead>
@@ -2149,6 +2225,104 @@
     <div class="modal-footer" style="margin-top:16px;">
       <button class="btn btn-ghost" onclick="closeModal('contact-detail-modal')">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- Onboarding Modal -->
+<div class="modal-overlay" id="onboarding-modal" style="z-index:1100;">
+  <div class="modal" style="max-width:540px;">
+
+    <!-- Step 1 -->
+    <div id="ob-step-1">
+      <div style="text-align:center;padding:8px 0 16px;">
+        <div style="font-size:40px;margin-bottom:12px;">📊</div>
+        <div class="modal-title" style="font-size:22px;margin-bottom:8px;">Welcome to Ledger</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.8;">
+          Your personal finance dashboard — 100% local, nothing uploaded.<br>
+          Let's get you set up in 3 quick steps.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0;">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <span style="font-size:20px;">🏦</span>
+          <div>
+            <div style="font-weight:500;font-size:13px;margin-bottom:2px;">Import your bank transactions</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Drop a CSV, OFX, or QFX file — supports TD, Scotiabank, CIBC, Simplii, Wealthsimple, and more</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <span style="font-size:20px;">🗂️</span>
+          <div>
+            <div style="font-weight:500;font-size:13px;margin-bottom:2px;">Auto-categorized transactions</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Ledger recognizes 300+ merchants. Right-click any transaction to reassign and teach it your patterns.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <span style="font-size:20px;">📈</span>
+          <div>
+            <div style="font-weight:500;font-size:13px;margin-bottom:2px;">Spending trends, budget, net worth</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Set budgets, track savings goals, monitor net worth, and see month-over-month changes automatically.</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="skipOnboarding()">Skip — explore on my own</button>
+        <button class="btn btn-primary" onclick="obGoStep(2)">Get Started →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="ob-step-2" style="display:none;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Step 2 of 3 · Import</div>
+      <div class="modal-title" style="margin-bottom:8px;">Import your first transactions</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.7;">
+        Drop your bank file here — or skip this and import from the <strong style="color:var(--accent)">My Finances</strong> page anytime.
+      </div>
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;"
+           onclick="document.getElementById('ob-file-input').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleObDrop(event.dataTransfer.files)">
+        <div style="font-size:28px;margin-bottom:8px;">⇡</div>
+        <div style="font-size:13px;font-weight:500;">Drop CSV / OFX / QFX here</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">TD, Scotiabank, CIBC, Simplii, Wealthsimple, and more</div>
+        <input type="file" id="ob-file-input" accept=".csv,.ofx,.qfx" multiple style="display:none;"
+               onchange="handleObFiles(this.files)">
+      </div>
+      <div id="ob-import-status" style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:10px;min-height:16px;text-align:center;"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:16px;">
+        <button class="btn btn-ghost" onclick="obGoStep(1)">← Back</button>
+        <button class="btn btn-primary" onclick="obGoStep(3)">Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div id="ob-step-3" style="display:none;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Step 3 of 3 · Quick Tips</div>
+      <div class="modal-title" style="margin-bottom:16px;">You're ready. Here's what to do next.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:rgba(181,242,58,0.15);color:var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-family:var(--mono);">1</span>
+          <div style="font-size:12px;"><strong>Right-click</strong> any transaction to assign category, change type, add a note, split it, or add it to a trip.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:rgba(181,242,58,0.15);color:var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-family:var(--mono);">2</span>
+          <div style="font-size:12px;"><strong>E-Transfers page</strong> — click any contact to set a label (e.g. "Mom") and default category. Applies to all future imports.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:rgba(181,242,58,0.15);color:var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-family:var(--mono);">3</span>
+          <div style="font-size:12px;"><strong>Settings → Backup &amp; Restore</strong> — export a JSON backup regularly. Your data lives only in this browser.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:rgba(181,242,58,0.15);color:var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-family:var(--mono);">4</span>
+          <div style="font-size:12px;"><strong>Calendar page</strong> — shows recurring bills as dots. Auto-detect will suggest bills from your transaction history.</div>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn btn-primary" style="padding:12px 32px;font-size:14px;" onclick="finishOnboarding()">Take me to my Dashboard →</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2167,6 +2341,7 @@
   <div id="ctx-panel-type" style="display:none;padding:4px 0;"></div>
   <!-- More panel -->
   <div id="ctx-panel-more" style="display:none;padding:4px 0;">
+    <div class="ctx-item" onclick="ctxSplitTx()"  style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">⌥ Split Transaction…</div>
     <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
   </div>
 </div>
@@ -2180,6 +2355,7 @@
 // ═══════════════════════════════════
 let state = {
   transactions: [],
+  _nextId: 1,  // monotonic transaction ID counter
   budgets: [],
   assets: [],
   liabilities: [],
@@ -2192,7 +2368,10 @@ let state = {
   customCategories: [],
   typeRules: {},
   tagColors:  {},  // 'acct:Name' or 'cat:Name' → hex color
-  tripCollapsed: {},  // normDesc(vendor) → category, persisted for future imports
+  tripCollapsed: {},
+  dismissedSuggestions: [],  // normDesc keys of dismissed recurring bill suggestions
+  contactRules: {},          // contactName → { label, category }
+  _onboarded: false,
 };
 
 let txFilter = 'all';
@@ -2203,6 +2382,10 @@ let csvHeaders = [];
 // HELPERS
 // ═══════════════════════════════════
 const $ = id => document.getElementById(id);
+function nextId() {
+  if (!state._nextId) state._nextId = (state.transactions.reduce((m,t)=>Math.max(m,t.id||0),0) + 1);
+  return state._nextId++;
+}
 const fmt = n => '$' + Math.abs(n).toLocaleString('en-CA', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -2449,6 +2632,113 @@ function closeCtxMenu() {
   ctxTxId = null;
 }
 
+// ─── Split Transaction ────────────────────────────────────────────────────
+let _splitTxId = null;
+
+function ctxSplitTx() {
+  _splitTxId = ctxTxId;
+  closeCtxMenu();
+  const t = state.transactions.find(x => x.id === _splitTxId);
+  if (!t) return;
+  $('split-tx-desc').textContent  = t.desc.slice(0, 60);
+  $('split-tx-total').textContent = 'Total: ' + fmt(t.amount);
+  // Start with 2 equal halves
+  const half = (t.amount / 2).toFixed(2);
+  renderSplitRows([
+    { amount: half,                          category: t.category || 'Shopping' },
+    { amount: (t.amount - +half).toFixed(2), category: t.category || 'Shopping' }
+  ]);
+  openModal('split-tx-modal');
+}
+
+function renderSplitRows(rows) {
+  const container = $('split-rows-container');
+  container.innerHTML = rows.map((row, i) => `
+    <div style="display:flex;gap:8px;align-items:center;" id="split-row-${i}">
+      <input type="number" class="form-input" min="0" step="0.01"
+             id="split-amt-${i}" value="${row.amount}"
+             style="width:110px;font-size:12px;" oninput="updateSplitRemainder()">
+      <select class="form-select" id="split-cat-${i}" style="flex:1;font-size:12px;">
+        ${getCategoryList().map(c => `<option value="${c}" ${c===row.category?'selected':''}>${c}</option>`).join('')}
+      </select>
+      ${i >= 2 ? `<button class="btn btn-danger" style="padding:4px 8px;" onclick="removeSplitRow(${i})">✕</button>` : ''}
+    </div>`).join('');
+  updateSplitRemainder();
+}
+
+function addSplitRow() {
+  const t = state.transactions.find(x => x.id === _splitTxId);
+  if (!t) return;
+  const existing = getSplitRows();
+  existing.push({ amount: '0', category: t.category || 'Shopping' });
+  renderSplitRows(existing);
+}
+
+function removeSplitRow(idx) {
+  const rows = getSplitRows().filter((_, i) => i !== idx);
+  renderSplitRows(rows);
+}
+
+function getSplitRows() {
+  const rows = [];
+  let i = 0;
+  while ($('split-amt-' + i)) {
+    rows.push({
+      amount:   ($('split-amt-' + i) || {value:'0'}).value,
+      category: ($('split-cat-' + i) || {value:''}).value
+    });
+    i++;
+  }
+  return rows;
+}
+
+function updateSplitRemainder() {
+  const t = state.transactions.find(x => x.id === _splitTxId);
+  if (!t) return;
+  const rows  = getSplitRows();
+  const used  = rows.reduce((s,r) => s + (+r.amount||0), 0);
+  const left  = Math.round((t.amount - used) * 100) / 100;
+  const el    = $('split-remainder');
+  if (!el) return;
+  el.style.color = Math.abs(left) < 0.01 ? 'var(--accent)' : 'var(--red)';
+  el.textContent = Math.abs(left) < 0.01
+    ? '✓ Splits add up correctly'
+    : 'Remaining: ' + fmt(Math.abs(left)) + (left < 0 ? ' over total' : ' unallocated');
+}
+
+function confirmSplit() {
+  const t = state.transactions.find(x => x.id === _splitTxId);
+  if (!t) return;
+  const rows = getSplitRows();
+  const total = rows.reduce((s,r) => s + (+r.amount||0), 0);
+  if (Math.abs(total - t.amount) > 0.02) {
+    showToast('Split amounts must add up to ' + fmt(t.amount)); return;
+  }
+  if (rows.some(r => +r.amount <= 0)) {
+    showToast('Each split must have an amount greater than zero'); return;
+  }
+  // Remove original, add split rows
+  state.transactions = state.transactions.filter(x => x.id !== _splitTxId);
+  rows.forEach((row, i) => {
+    state.transactions.push({
+      id:       nextId(),
+      date:     t.date,
+      desc:     t.desc + (rows.length > 1 ? ' [split ' + (i+1) + '/' + rows.length + ']' : ''),
+      amount:   +row.amount,
+      type:     t.type,
+      category: row.category,
+      account:  t.account,
+      contact:  t.contact || null,
+      notes:    t.notes   || ''
+    });
+  });
+  saveState();
+  closeModal('split-tx-modal');
+  refreshTransactions();
+  refreshDashboard();
+  showToast('Split into ' + rows.length + ' transactions.');
+}
+
 // ─── Tag colour helpers ───────────────────────────────────────────────────────
 function acctPillStyle(acct) {
   if (!acct) return '';
@@ -2575,6 +2865,56 @@ This will also remember this rule for future imports.`
   sel.addEventListener('blur', () => { setTimeout(commit, 100); });
 }
 
+let txRange = 'all';
+
+function setTxRange(range, el) {
+  txRange = range;
+  document.querySelectorAll('.tx-range-btn').forEach(b => b.classList.remove('active-range'));
+  if (el) el.classList.add('active-range');
+  const custom = $('tx-custom-range');
+  if (custom) custom.style.display = range === 'custom' ? 'flex' : 'none';
+  refreshTransactions();
+}
+
+function getTxRangeDates() {
+  const now   = new Date();
+  const pad   = n => String(n).padStart(2,'0');
+  const ymd   = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  const today = ymd(now);
+  if (txRange === 'all')    return { from: '1900-01-01', to: '2999-12-31' };
+  if (txRange === 'month') {
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: ymd(from), to: today };
+  }
+  if (txRange === '3m') {
+    const from = new Date(now); from.setMonth(from.getMonth() - 3);
+    return { from: ymd(from), to: today };
+  }
+  if (txRange === '6m') {
+    const from = new Date(now); from.setMonth(from.getMonth() - 6);
+    return { from: ymd(from), to: today };
+  }
+  if (txRange === 'year') {
+    return { from: now.getFullYear() + '-01-01', to: today };
+  }
+  if (txRange === 'custom') {
+    const from = ($('tx-range-from')||{}).value || '1900-01-01';
+    const to   = ($('tx-range-to')  ||{}).value || '2999-12-31';
+    return { from, to };
+  }
+  return { from: '1900-01-01', to: '2999-12-31' };
+}
+
+function editTxNote(id) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) return;
+  const note = prompt('Note for: ' + t.desc.slice(0,50), t.notes || '');
+  if (note === null) return;
+  t.notes = note.trim();
+  saveState();
+  refreshTransactions();
+}
+
 function filterTx(f, el) {
   txFilter = f;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -2609,11 +2949,14 @@ function populateTxFilters() {
 function refreshTransactions() {
   populateTxFilters();
 
+  // Date range filter
+  const { from: rangeFrom, to: rangeTo } = getTxRangeDates();
+
   // Exclude transfers, bank-transfers, and invest trades from main list
-  // (invest trades live in Holdings tab)
   let filtered = state.transactions.filter(t =>
     t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest' &&
-    (txFilter === 'all' || t.type === txFilter)
+    (txFilter === 'all' || t.type === txFilter) &&
+    t.date >= rangeFrom && t.date <= rangeTo
   );
 
   // Search filter
@@ -2645,7 +2988,12 @@ function refreshTransactions() {
   if (sort === 'acct-desc')   filtered.sort((a,b) => (b.account||'').localeCompare(a.account||''));
 
   const countEl = $('tx-count');
-  if (countEl) countEl.textContent = filtered.length + ' transaction' + (filtered.length !== 1 ? 's' : '');
+  if (countEl) {
+    const total = filtered.reduce((s,t) => s + (t.type==='expense'?-t.amount:t.amount), 0);
+    const sign  = total >= 0 ? '+' : '';
+    countEl.textContent = filtered.length + ' transaction' + (filtered.length !== 1 ? 's' : '') +
+      '  ·  net ' + sign + fmt(Math.abs(total));
+  }
 
   // Show bulk-delete button only when filters are active
   const bulkBtn = $('bulk-delete-btn');
@@ -2671,7 +3019,7 @@ function refreshTransactions() {
       <td><span class="highlight-val">${t.date}</span></td>
       <td>
         <div style="font-size:13px;">${t.desc}</div>
-        ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}</div>` : ''}
+        ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}${((state.contactRules||{})[t.contact.name]||{}).label ? ' · <span style=\"opacity:0.7;\">' + state.contactRules[t.contact.name].label + '</span>' : ''}</div>` : ''}
       </td>
       <td>
         <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;${catPillStyle(t.category)}" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
@@ -2679,6 +3027,11 @@ function refreshTransactions() {
       <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
       <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
       <td>${acct ? `<span class="account-pill" style="${acctPillStyle(acct)}">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
+      <td>
+        ${t.notes
+          ? `<span class="tx-note-pill" onclick="editTxNote(${t.id})" title="${t.notes.replace(/"/g,'&quot;')}">${t.notes.slice(0,22)}${t.notes.length>22?'…':''}</span>`
+          : `<button class="btn btn-ghost" onclick="editTxNote(${t.id})" style="font-size:10px;padding:2px 7px;opacity:0.4;" title="Add note">+ note</button>`}
+      </td>
       <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>`;
   }).join('');
@@ -2995,11 +3348,11 @@ function renderBillsList() {
 // AUTO-DETECT RECURRING BILLS
 // ═══════════════════════════════════
 
-// Known recurring bill patterns — pre-seeded so Mortgage/NSLSC/Pearlmaid are caught
+// Known recurring bill patterns — pre-seeded so common bills are auto-detected
 const RECURRING_PATTERNS = [
   { re: /merix|mortgage/i,                   name: 'Mortgage',          category: 'Housing',      type: 'expense', color: '#e85d5d', frequency: 'biweekly' },
   { re: /nslsc|student loan/i,               name: 'Student Loan',      category: 'Loan Payment', type: 'expense', color: '#f2a83a', frequency: 'biweekly' },
-  { re: /pearlmaid|be clean|kara.*clean/i,   name: 'PearlMaid Cleaning',category: 'Home Services',type: 'expense', color: '#3ab5f2', frequency: 'biweekly' },
+  { re: /cleaning service|be clean|maid.*service|house.*clean/i, name: 'Cleaning Service', category: 'Home Services', type: 'expense', color: '#3ab5f2', frequency: 'biweekly' },
   { re: /nb power|energie nb/i,              name: 'NB Power',          category: 'Utilities',    type: 'expense', color: '#f2a83a', frequency: 'monthly'  },
   { re: /rogers|bell internet/i,             name: 'Internet',          category: 'Utilities',    type: 'expense', color: '#3ab5f2', frequency: 'monthly'  },
   { re: /netflix/i,                          name: 'Netflix',           category: 'Entertainment',type: 'expense', color: '#e85d5d', frequency: 'monthly'  },
@@ -3009,15 +3362,18 @@ const RECURRING_PATTERNS = [
 ];
 
 function normDesc(desc) {
-  // Strip dates, amounts, reference numbers — keep the merchant/payee core
+  // Extract merchant core — strip noise that varies per-transaction
   return (desc || '')
-    .replace(/\d{4,}/g, '')          // strip long numbers
-    .replace(/\$[\d,.]+/g, '')       // strip dollar amounts
-    .replace(/[#*\-_\/\\]/g, ' ')   // strip punctuation
+    .replace(/\s*#\d+/g, '')              // store numbers: Tim Hortons #1234
+    .replace(/\*[A-Z0-9]{4,}/g, '')       // card ref codes: AMZN*AB1CD234
+    .replace(/\d{4,}/g, '')           // standalone long numbers
+    .replace(/\$[\d,.]+/g, '')            // dollar amounts
+    .replace(/(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|CA|US)/gi, '') // province/country codes
+    .replace(/[-_*#\/\\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
-    .slice(0, 40);
+    .slice(0, 50);
 }
 
 function detectRecurringBills() {
@@ -3039,6 +3395,10 @@ function detectRecurringBills() {
       b.name.toLowerCase().includes(p.name.toLowerCase().slice(0, 8))
     );
     if (alreadyAdded) return;
+    // Already dismissed?
+    const dismissed = (state.dismissedSuggestions || []);
+    const sampleKey = normDesc(matches[0]?.desc || p.name);
+    if (dismissed.some(dk => sampleKey.includes(dk) || dk.includes(sampleKey.slice(0,8)))) return;
 
     // Median amount and most common day
     const amounts = matches.map(t => t.amount).sort((a, b) => a - b);
@@ -3151,6 +3511,7 @@ function openRecurringSuggestionsModal() {
     return;
   }
 
+  window._currentSuggestions = suggestions;
   body.innerHTML = suggestions.map((s, idx) => `
     <div class="bill-row" id="rsug-${idx}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px;">
       <div style="display:flex;width:100%;justify-content:space-between;align-items:flex-start;">
@@ -3194,7 +3555,7 @@ function acceptRecurringSuggestion(idx) {
   const cat    = ($('rsug-cat-'   +idx)||{value:s.category}).value || s.category;
   if (!state.bills) state.bills = [];
   const freq = ($('rsug-freq-'+idx)||{value: s.frequency||'monthly'}).value;
-  state.bills.push({ id: Date.now() + idx, name, amount, day, type: s.type, category: cat, color: s.color, frequency: freq });
+  state.bills.push({ id: nextId(), name, amount, day, type: s.type, category: cat, color: s.color, frequency: freq });
   saveState();
   const row = $('rsug-'+idx);
   if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; row.querySelector('.btn-primary').textContent = '✓ Added'; }
@@ -3203,6 +3564,14 @@ function acceptRecurringSuggestion(idx) {
 }
 
 function dismissRecurringSuggestion(idx) {
+  // Persist so it doesn't come back after refresh
+  if (window._currentSuggestions && window._currentSuggestions[idx]) {
+    const key = normDesc(window._currentSuggestions[idx].sampleDesc || window._currentSuggestions[idx].name);
+    if (!state.dismissedSuggestions) state.dismissedSuggestions = [];
+    if (!state.dismissedSuggestions.includes(key)) state.dismissedSuggestions.push(key);
+    saveState();
+  }
+  // original body below
   const row = $('rsug-'+idx);
   if (row) { row.style.display = 'none'; }
 }
@@ -3234,6 +3603,28 @@ function refreshDashboard() {
   $('dash-spending').textContent = fmt(spending);
   $('dash-balance').textContent = (balance >= 0 ? '+' : '-') + fmt(balance);
   $('dash-balance').className = 'stat-value ' + (balance >= 0 ? 'positive' : 'negative');
+
+  // Month-over-month % change
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear  = month === 0 ? year - 1 : year;
+  const prevMo = state.transactions.filter(t => {
+    const d = new Date(t.date + 'T12:00:00');
+    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+  });
+  const prevIncome  = prevMo.filter(t => t.type === 'income' ).reduce((s,t) => s+t.amount, 0);
+  const prevSpend   = prevMo.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+  function momBadge(cur, prev, lowerIsBetter) {
+    if (!prev) return '—';
+    const pct = ((cur - prev) / prev * 100);
+    const up  = pct > 0;
+    const good = lowerIsBetter ? !up : up;
+    const color = Math.abs(pct) < 2 ? 'var(--muted)' : (good ? 'var(--accent)' : 'var(--red)');
+    return '<span style="color:' + color + ';font-size:11px;">' + (up?'↑':'↓') + Math.abs(pct).toFixed(1) + '% vs last month</span>';
+  }
+  const incSub  = $('dash-income-sub');
+  const spdSub  = $('dash-spending-sub');
+  if (incSub)  incSub.innerHTML  = momBadge(income,   prevIncome, false);
+  if (spdSub)  spdSub.innerHTML  = momBadge(spending, prevSpend,  true);
 
   // Recent transactions — newest first, exclude transfers and invest trades
   const recent = [...state.transactions]
@@ -3763,10 +4154,8 @@ const BANK_PROFILES = [
         // Transfers to own Wealthsimple account should be flagged for cross-account matching
         let hint;
         const dl = desc.toLowerCase();
-        if (/e-transfer send kurt wealthsimple|wealthsimple investments/i.test(desc)) {
+        if (/wealthsimple investments/i.test(desc)) {
           hint = 'xfer-out';   // money leaving Simplii → Wealthsimple
-        } else if (/e-transfer receive kurt hamlyn/i.test(desc)) {
-          hint = 'xfer-in';    // money arriving from Wealthsimple → Simplii (own name)
         } else if (inn > 0) {
           hint = 'income';
         } else {
@@ -4051,6 +4440,39 @@ const BANK_PROFILES = [
     }
   },
 
+  // ─── OFX / QFX (Open Financial Exchange) ─────────────────────────────────
+  // Works with TD, RBC, BMO, CIBC, Scotiabank — drop .ofx or .qfx files directly
+  {
+    name: 'OFX / QFX (Bank Standard)',
+    icon: '🏦',
+    accountType: 'Any',
+    exportPath: 'Online Banking → Download transactions → OFX or QFX format',
+    detect() { return false; }, // detected by file extension + content, not headers
+    parseRaw(rawText) {
+      const results = [];
+      const blocks = [...rawText.matchAll(/<STMTTRN>([\s\S]*?)(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi)];
+      blocks.forEach(m => {
+        const block = m[0];
+        const get = tag => { const r = block.match(new RegExp('<' + tag + '>([^<\\r\\n]+)', 'i')); return r ? r[1].trim() : ''; };
+        const dtraw   = get('DTPOSTED') || get('DTUSER') || get('DTAVAIL');
+        const trnamt  = get('TRNAMT');
+        const name    = get('NAME') || get('PAYEE') || get('MEMO') || '';
+        const memo    = get('MEMO') || '';
+        const trntype = get('TRNTYPE') || '';
+        if (!dtraw || !trnamt || !name) return;
+        const ds = dtraw.replace(/(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3');
+        const desc = name === memo ? name : [name, memo].filter(Boolean).join(' — ');
+        const amt  = parseFloat(trnamt);
+        let hint = amt < 0 ? 'expense' : 'income';
+        if (/^(PAYMENT|XFER|CHECK|DEBIT)$/i.test(trntype) && amt > 0) hint = 'transfer';
+        if (/^(DIRECTDEP|DEP)$/i.test(trntype)) hint = 'income';
+        results.push({ date: ds, desc, rawAmt: String(amt), hint });
+      });
+      return results;
+    },
+    parse(rows, headers) { return []; }
+  },
+
   // ─── GENERIC FALLBACK ──────────────────────────────────────────────────────
   {
     name: 'Generic CSV',
@@ -4082,7 +4504,7 @@ function handleDrop(e) {
 
 // Handle one or many files
 function handleFileList(files) {
-  const csvFiles = [...files].filter(f => f.name.toLowerCase().endsWith('.csv'));
+  const csvFiles = [...files].filter(f => /\.(csv|ofx|qfx)$/i.test(f.name));
   if (csvFiles.length === 0) { showToast('Please upload CSV files.'); return; }
   if (csvFiles.length === 1) {
     // Single file: use the existing preview flow
@@ -4113,15 +4535,51 @@ function parseCSVLine(line) {
 }
 
 function handleCSVFile(file) {
-  if (!file || !file.name.toLowerCase().endsWith('.csv')) { showToast('Please upload a CSV file.'); return; }
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['csv','ofx','qfx'].includes(ext)) { showToast('Please upload a CSV, OFX, or QFX file.'); return; }
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+    const raw = e.target.result;
+
+    // ── OFX/QFX path ──────────────────────────────────────────────────
+    if (ext === 'ofx' || ext === 'qfx' || /OFXHEADER|<OFX[> ]/i.test(raw.slice(0,400))) {
+      const ofxProf = BANK_PROFILES.find(p => p.name === 'OFX / QFX (Bank Standard)');
+      if (ofxProf) {
+        const parsed = ofxProf.parseRaw(raw);
+        if (parsed.length > 0) {
+          detectedProfile = ofxProf;
+          window._ofxParsed = parsed;
+          showDetectBanner(ofxProf);
+          const ov = $('import-account-override');
+          if (ov) ov.value = '';
+          $('csv-preview').style.display = 'block';
+          const col = $('col-mapper'); if (col) col.style.display = 'none';
+          $('csv-preview-table').innerHTML =
+            '<thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th></tr></thead><tbody>' +
+            parsed.slice(0,5).map(p => {
+              const amt = parseFloat(p.rawAmt);
+              const col = amt < 0 ? 'var(--red)' : 'var(--accent)';
+              return '<tr><td><span class="highlight-val">' + p.date + '</span></td>' +
+                '<td style="font-size:12px;">' + p.desc.slice(0,55) + '</td>' +
+                '<td style="font-family:var(--mono);color:' + col + ';">' + (amt>=0?'+':'') + fmt(Math.abs(amt)) + '</td>' +
+                '<td style="font-family:var(--mono);font-size:10px;color:var(--muted);">' + (p.hint||'auto') + '</td></tr>';
+            }).join('') + '</tbody>';
+          return;
+        }
+      }
+      showToast('Could not parse OFX file — no transactions found.');
+      return;
+    }
+
+    // ── CSV path ───────────────────────────────────────────────────────
+    const lines = raw.trim().split(/\r?\n/).filter(l => l.trim());
     csvHeaders = parseCSVLine(lines[0]);
     csvRows = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
-
-    // ── Auto-detect bank ────────────────────────────────────────────────
-    detectedProfile = BANK_PROFILES.find(p => p.detect(csvHeaders)) || BANK_PROFILES[BANK_PROFILES.length - 1];
+    window._ofxParsed = null;
+    const colMapper = $('col-mapper'); if (colMapper) colMapper.style.display = '';
+    detectedProfile = BANK_PROFILES.find(p => p.name !== 'OFX / QFX (Bank Standard)' && p.detect(csvHeaders))
+                   || BANK_PROFILES[BANK_PROFILES.length - 1];
     showDetectBanner(detectedProfile);
     renderCSVPreview();
   };
@@ -4257,7 +4715,7 @@ function importMultipleCSVFiles(files) {
 
         existingKeys.add(key);
         state.transactions.push({
-          id: Date.now() + fileIdx * 10000 + idx,
+          id: nextId(),
           date,
           desc:     item.desc,
           amount,
@@ -4281,9 +4739,11 @@ function importCSV() {
   let imported = 0, skipped = 0, bad = 0;
 
   const profile      = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
-  const parsed       = profile.parse(csvRows, csvHeaders);
   const overrideEl   = $('import-account-override');
   const accountName  = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : profile.name;
+  // Use pre-parsed OFX data if available, otherwise parse CSV
+  const parsed = window._ofxParsed || profile.parse(csvRows, csvHeaders);
+  window._ofxParsed = null;
 
   const existingKeys = new Set(
     state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount))
@@ -4336,7 +4796,7 @@ function importCSV() {
 
     existingKeys.add(key);
     state.transactions.push({
-      id: Date.now() + idx,
+      id: nextId(),
       date,
       desc:     item.desc,
       amount,
@@ -4393,11 +4853,11 @@ function extractContact(desc, type) {
 
   // ── Own inter-bank moves — these are NOT e-transfers to a person ────────
   // Return null so they never appear in the e-transfers contact panel
-  const OWN_BANK = /e-transfer send kurt wealthsimple|wealthsimple investments inc?|e-transfer receive kurt hamlyn|investment wealthsimple/i;
+  const OWN_BANK = /wealthsimple investments inc?|investment wealthsimple/i;
   if (OWN_BANK.test(desc)) return null;
 
   // ── Person-to-person Simplii e-transfers ────────────────────────────────
-  // "INTERAC E-TRANSFER RECEIVE KATHERINE MYERS" / "INTERAC E-TRANSFER SEND Be Clean"
+  // Examples: "INTERAC E-TRANSFER RECEIVE JANE SMITH" / "INTERAC E-TRANSFER SEND Acme Services"
   const etIn  = desc.match(/INTERAC E-TRANSFER RECEIVE (.+)/i);
   const etOut = desc.match(/INTERAC E-TRANSFER SEND (.+)/i);
   if (etIn)  return { name: titleCase(etIn[1].trim()),  dir: 'in'  };
@@ -4430,31 +4890,22 @@ function guessCategory(desc) {
   if (/internet bill payment/.test(d))                       return 'Credit Card Payment';
 
   // ── Own inter-bank moves → Bank Transfer ────────────────────────────────
-  if (/wealthsimple investments|kurt wealthsimple|e-transfer receive kurt hamlyn/i.test(desc)) return 'Bank Transfer';
+  if (/wealthsimple investments/i.test(desc)) return 'Bank Transfer';
   if (/internal transfer|transfer_tf/.test(d))                       return 'Transfer';
 
-  // ── E-transfers — auto-categorize by known contact names ──────────────
-  // Incoming (money received)
-  if (/interac e-transfer receive katherine myers/i.test(desc))  return 'Income';
-  if (/interac e-transfer receive kurt hamlyn/i.test(desc))      return 'Transfer';
-  if (/interac e-transfer receive betty myers/i.test(desc))      return 'Income';
-  if (/interac e-transfer receive stephen white/i.test(desc))    return 'Income';
-  if (/interac e-transfer receive david hamlyn/i.test(desc))     return 'Income';
-  if (/interac e-transfer receive margot/i.test(desc))           return 'Income';
-  if (/interac e-transfer receive jayne/i.test(desc))            return 'Income';
-  if (/interac e-transfer receive merle/i.test(desc))            return 'Income';
+  // ── E-transfers — check per-contact rules first, then generic patterns ──
+  if (/interac e-transfer (send|receive)/i.test(desc)) {
+    const _c = extractContact(desc, 'transfer');
+    if (_c) {
+      const rule = (state.contactRules || {})[_c.name];
+      if (rule && rule.category) return rule.category;
+    }
+    if (/interac e-transfer receive/i.test(desc)) return 'Income';
+    if (/interac e-transfer send.*(golf|hockey|sport)/i.test(desc)) return 'Entertainment';
+    return 'Transfer';
+  }
   if (/eft credit sunlife/i.test(desc))                          return 'Healthcare';
   if (/eft credit.*tax refund|rembours.*impot/i.test(desc))     return 'Income';
-  // Outgoing (money sent)
-  if (/interac e-transfer send be clean|pearlmaid|kara/i.test(desc))  return 'Home Services';
-  if (/interac e-transfer send katie/i.test(desc))               return 'Other';
-  if (/interac e-transfer send jayne/i.test(desc))               return 'Other';
-  if (/interac e-transfer send dad/i.test(desc))                 return 'Other';
-  if (/interac e-transfer send chris/i.test(desc))               return 'Other';
-  if (/interac e-transfer send matt/i.test(desc))                return 'Other';
-  if (/interac e-transfer send monaco snow/i.test(desc))         return 'Home Services';
-  if (/interac e-transfer send.*golf/i.test(desc))               return 'Entertainment';
-  if (/interac e-transfer send.*hockey/i.test(desc))             return 'Entertainment';
   if (/remise carbone|carbon rebate/i.test(desc))                return 'Income';
 
   // ── Wealthsimple activity types ────────────────────────────────────────
@@ -4476,20 +4927,73 @@ function guessCategory(desc) {
   if (/costco gas/.test(d))                     return 'Transport';
   if (/costco trave/.test(d))                   return 'Travel';
   if (/costco wholesale/.test(d))               return 'Shopping';
-  if (/airbnb|hotel|resort|westjet|air canada|costco trave/.test(d)) return 'Travel';
-  if (/tide.?boar|brewing|bar |pub |lounge|brasserie/.test(d)) return 'Food & Dining';
-  if (/restaurant|bistro|cafe|tim horton|mcdonald|pizza|sushi/.test(d)) return 'Food & Dining';
-  if (/mancuso|clinic|physio/.test(d))          return 'Healthcare';
-  if (/pharmacy|shoppers|doctor|dental/.test(d)) return 'Healthcare';
-  if (/snow removal|cleaning|clean|pearlmaid/.test(d)) return 'Home Services';
-  if (/golf|bannister.*pool/.test(d))           return 'Entertainment';
+  // ── Travel ────────────────────────────────────────────────────────────
+  if (/airbnb|vrbo|hotel|resort|westjet|air canada|porter.*air|swoop|flair.*air|delta|united air|american air|klm|lufthansa|ryanair/.test(d)) return 'Travel';
+  if (/costco trave|expedia|booking\.com|hotels\.com|trivago|kayak|priceline|hotwire/.test(d)) return 'Travel';
+  if (/enterprise.*rent|hertz|avis|budget.*car|national.*car|zipcar/.test(d)) return 'Travel';
+  if (/via rail|amtrak|greyhound|flixbus|ferry/.test(d)) return 'Travel';
+
+  // ── Food & Dining ──────────────────────────────────────────────────────
+  if (/tim horton|mcdonald|burger king|wendy|harvey|a&w|dairy queen|dq|subway|quiznos/.test(d)) return 'Food & Dining';
+  if (/pizza|sushi|pho|ramen|shawarma|falafel|burrito|taco|thai|chinese food|indian food/.test(d)) return 'Food & Dining';
+  if (/restaurant|bistro|brasserie|eatery|diner|grill|kitchen|cantina|trattoria|tavern/.test(d)) return 'Food & Dining';
+  if (/cafe|coffee|starbucks|second cup|tim|dunkin|booster juice|smoothie/.test(d)) return 'Food & Dining';
+  if (/bar |pub |lounge|brewing|brewery|taproom|wine bar|distiller/.test(d)) return 'Food & Dining';
+  if (/doordash|skip.*dishes|uber eats|instacart|grubhub|seamless/.test(d)) return 'Food & Dining';
+
+  // ── Groceries ─────────────────────────────────────────────────────────
+  if (/loblaws|superstore|sobeys|metro.*grocery|iga|safeway|foodland|freshco|no frills|food basics/.test(d)) return 'Food & Dining';
+  if (/costco wholesale|walmart.*grocery|walmart supercenter/.test(d)) return 'Shopping';
+  if (/grocery|provigo|maxi|super c|real canadian/.test(d)) return 'Food & Dining';
+  if (/clinic|physio|chiropractic|optometrist|orthodont/.test(d)) return 'Healthcare';
+  // ── Healthcare ────────────────────────────────────────────────────────
+  if (/shoppers drug|pharmasave|rexall|london drugs|costco pharmacy|jean coutu/.test(d)) return 'Healthcare';
+  if (/pharmacy|drug mart|rx/.test(d)) return 'Healthcare';
+  if (/dental|dentist|orthodont|braces/.test(d)) return 'Healthcare';
+  if (/doctor|physician|walk.?in clinic|medic|hospital|emergency room/.test(d)) return 'Healthcare';
+  if (/optom|vision.*care|eye exam|eyeglasses|lenscrafters|clearly/.test(d)) return 'Healthcare';
+  if (/snow removal|cleaning service|cleaning co|lawn care|landscap/.test(d)) return 'Home Services';
+  if (/\bgolf\b|mini.?golf|driving range/.test(d)) return 'Entertainment';
   if (/hockey|sport|gym|fitness/.test(d))       return 'Entertainment';
-  if (/netflix|spotify|cinema|theatre|amazon prime/.test(d)) return 'Entertainment';
+  // ── Entertainment & Subscriptions ────────────────────────────────────
+  if (/netflix|disney\+|disney plus|hulu|hbo|crave|paramount\+|apple tv\+|peacock/.test(d)) return 'Entertainment';
+  if (/spotify|apple music|youtube.*premium|tidal|deezer|pandora/.test(d)) return 'Entertainment';
+  if (/cinema|cineplex|landmark cinema|amc|theatre|theater/.test(d)) return 'Entertainment';
+  if (/steam|playstation|xbox|nintendo|epic games|ea play|ubisoft/.test(d)) return 'Entertainment';
+  if (/gym|goodlife|anytime fitness|ymca|yoga|crossfit|equinox/.test(d)) return 'Entertainment';
+  if (/hockey|soccer|basketball|baseball|curling|swimming lessons/.test(d)) return 'Entertainment';
   if (/grocery|loblaws|sobeys|superstore/.test(d)) return 'Food & Dining';
-  if (/hydro|electric|water|internet|rogers|bell/.test(d)) return 'Utilities';
-  if (/uber|lyft|shell|esso|transit|parking|taxi/.test(d)) return 'Transport';
-  if (/amazon|walmart|target|paypal|sq \*|pos purchase/.test(d)) return 'Shopping';
-  if (/abm|atm withdrawal/.test(d))             return 'Cash';
+  // ── Utilities ─────────────────────────────────────────────────────────
+  if (/hydro|nb power|hydro.?one|bc hydro|enmax|atco|fortis|nova scotia power/.test(d)) return 'Utilities';
+  if (/gas.*utility|enbridge|reliance home|direct energy|natural gas/.test(d)) return 'Utilities';
+  if (/internet|rogers|bell canada|telus|shaw|cogeco|eastlink|videotron|fido|koodo/.test(d)) return 'Utilities';
+  if (/water.*utility|waste.*management|garbage|recycl.*pickup/.test(d)) return 'Utilities';
+  // ── Transport ─────────────────────────────────────────────────────────
+  if (/uber(?!.*eats)|lyft|grab|bolt.*taxi|taxi|cab/.test(d)) return 'Transport';
+  if (/shell|esso|petro.?can|sunoco|husky|pioneer gas|ultramar|circle k|irving oil/.test(d)) return 'Transport';
+  if (/parking|impark|indigo park|secure.*park|sp\+/.test(d)) return 'Transport';
+  if (/transit|oc transpo|metropass|presto card|ttc|stm|translink|go train|via rail/.test(d)) return 'Transport';
+  if (/zipcar|turo|bcaa|caa|roadside assist/.test(d)) return 'Transport';
+  // Amazon sub-merchant detection (before generic Amazon catch-all)
+  if (/amazon prime video|amazon video|prime video/i.test(d))       return 'Entertainment';
+  if (/amazon prime|amzn prime/i.test(d))                         return 'Entertainment';
+  if (/amazon music|audible/i.test(d))                              return 'Entertainment';
+  if (/amazon.*kindle|kindle/i.test(d))                             return 'Entertainment';
+  if (/amazon web services|aws/i.test(d))                         return 'Business';
+  if (/amazon fresh|whole foods/i.test(d))                          return 'Food & Dining';
+  if (/amzn mktp|amazon\.ca|amazon\.com|amazon marketplace/i.test(d)) return 'Shopping';
+  if (/amazon/i.test(d))                                        return 'Shopping';
+  if (/walmart|target|canadian tire|dollarama/i.test(d))            return 'Shopping';
+  if (/paypal|sq \*|pos purchase/i.test(d))                         return 'Shopping';
+  // ── Shopping ──────────────────────────────────────────────────────────
+  if (/ikea|home depot|rona|canadian tire|lowes|home hardware|ace hardware/.test(d)) return 'Shopping';
+  if (/best buy|staples|bureau en gros|the source|apple store|microsoft store/.test(d)) return 'Shopping';
+  if (/h&m|zara|gap|old navy|banana republic|uniqlo|winners|marshalls|tj maxx/.test(d)) return 'Shopping';
+  if (/roots|lululemon|nike|adidas|under armour|sport chek|atmosphere/.test(d)) return 'Shopping';
+  if (/chapters|indigo|pages|amazon.*book|book.*store/.test(d)) return 'Shopping';
+  if (/pet.*smart|petco|pet.*supplies/.test(d)) return 'Shopping';
+  // ── Cash ──────────────────────────────────────────────────────────────
+  if (/abm|atm withdrawal|cash withdrawal|withdraw/.test(d)) return 'Cash';
   if (/salary|payroll|employer/.test(d))        return 'Salary';
   if (/purchase interest|interest charge/.test(d)) return 'Credit Card Payment';
   if (/fee/.test(d))                            return 'Other';
@@ -5046,6 +5550,28 @@ function openContactDetail(name) {
 
   $('contact-detail-name').textContent = name;
 
+  // Populate the contact rule fields with any saved rule
+  const rule = (state.contactRules || {})[name] || {};
+  const labelEl = $('contact-rule-label');
+  const catEl   = $('contact-rule-category');
+  if (labelEl) labelEl.value = rule.label || '';
+  if (catEl) {
+    catEl.innerHTML = getCategoryList().map(cat =>
+      `<option value="${cat}" ${cat === (rule.category || 'Income') ? 'selected' : ''}>${cat}</option>`
+    ).join('');
+  }
+  const statusEl = $('contact-rule-status');
+  if (statusEl) {
+    if (rule.category || rule.label) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Saved rule: ' + [rule.label, rule.category].filter(Boolean).join(' · ');
+    } else {
+      statusEl.style.display = 'none';
+    }
+  }
+  // Store name for saveContactRule()
+  $('contact-detail-modal')._contactName = name;
+
   const totalIn  = txs.filter(t => t.contact.dir === 'in' ).reduce((s,t) => s + t.amount, 0);
   const totalOut = txs.filter(t => t.contact.dir === 'out').reduce((s,t) => s + t.amount, 0);
   $('contact-detail-stats').innerHTML = `
@@ -5075,6 +5601,33 @@ function openContactDetail(name) {
   }).join('');
 
   openModal('contact-detail-modal');
+}
+
+function saveContactRule() {
+  const modal   = $('contact-detail-modal');
+  const name    = modal ? modal._contactName : null;
+  if (!name) return;
+  const label   = ($('contact-rule-label')    || {value:''}).value.trim();
+  const category= ($('contact-rule-category') || {value:''}).value;
+  if (!state.contactRules) state.contactRules = {};
+  state.contactRules[name] = { label, category };
+  saveState();
+  // Re-categorize all this contact's transactions
+  let updated = 0;
+  state.transactions.forEach(t => {
+    if (t.contact && t.contact.name === name && category) {
+      t.category = category;
+      updated++;
+    }
+  });
+  saveState();
+  refreshTransactions();
+  const statusEl = $('contact-rule-status');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.textContent   = 'Saved! ' + (label ? label + ' · ' : '') + category + (updated ? ' — updated ' + updated + ' transactions' : '');
+  }
+  showToast('Rule saved for ' + name + (updated ? ' — ' + updated + ' transactions updated' : ''));
 }
 
 function refreshTransfers() {
@@ -5118,7 +5671,10 @@ function refreshTransfers() {
       cc.innerHTML = contactRows.map(([name, d]) => `
         <div class="bill-row" style="gap:12px;cursor:pointer;" onclick="openContactDetail('${name.replace(/'/g,"\\'")}')" title="Click to see all transactions">
           <div style="flex:1;">
-            <div style="font-size:13px;font-weight:500;">${name}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;font-weight:500;">${name}</span>
+              ${((state.contactRules||{})[name]||{}).label ? `<span style="font-family:var(--mono);font-size:9px;background:rgba(181,242,58,0.12);color:var(--accent);border:1px solid rgba(181,242,58,0.25);border-radius:10px;padding:1px 7px;">${(state.contactRules[name]||{}).label}</span>` : ''}
+            </div>
             <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d.count} transaction${d.count!==1?'s':''} · click to view</div>
           </div>
           ${d.in  > 0 ? `<div style="font-family:var(--mono);font-size:12px;color:var(--accent);">↙ ${fmt(d.in)}</div>` : ''}
@@ -5742,7 +6298,7 @@ function reconcileTransfers() {
 
   // ── Patterns that identify YOUR OWN inter-bank movements ─────────────
   // These go to 'bank-transfer' — not e-transfers, not expenses
-  const OWN_BANK = /e-transfer send kurt wealthsimple|wealthsimple investments inc|e-transfer receive kurt hamlyn|investment wealthsimple/i;
+  const OWN_BANK = /wealthsimple investments inc?|investment wealthsimple/i;
 
   // ── Patterns that are CIBC/Scotiabank/TD credit card payments ─────────
   // These stay as 'transfer' with category 'Credit Card Payment'
@@ -5795,9 +6351,19 @@ const STORAGE_KEY = 'ledger_v1';
 
 function saveState() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const data = JSON.stringify(state);
+    // Warn at 3.5MB, block at 4.5MB with export prompt
+    const bytes = new Blob([data]).size;
+    if (bytes > 4500000) {
+      showToast('⚠ Storage nearly full (' + (bytes/1024/1024).toFixed(1) + 'MB) — export a backup now!');
+      // Still try to save
+    } else if (bytes > 3500000) {
+      showToast('Storage at ' + (bytes/1024/1024).toFixed(1) + 'MB — consider exporting a backup soon.');
+    }
+    localStorage.setItem(STORAGE_KEY, data);
   } catch(e) {
     console.warn('Could not save to localStorage:', e);
+    showToast('⚠ Could not save — storage may be full. Export your data immediately!');
   }
 }
 
@@ -5818,6 +6384,10 @@ function loadState() {
       if (!state.typeRules)    state.typeRules    = {};
       if (!state.tagColors)    state.tagColors    = {};
       if (!state.tripCollapsed) state.tripCollapsed = {};
+      if (!state.dismissedSuggestions) state.dismissedSuggestions = [];
+      if (!state.contactRules) state.contactRules = {};
+      if (state._onboarded === undefined) state._onboarded = false;
+      if (!state._migrations) state._migrations = {};
       return true;
     }
   } catch(e) {
@@ -5860,6 +6430,78 @@ deleteGoal      = function(id)    { _save_delGoal(id);          saveState(); };
 
 const _save_updateGoal      = updateGoalSaved;
 updateGoalSaved = function(id, v) { _save_updateGoal(id, v);   saveState(); };
+
+// ═══════════════════════════════════
+// BACKUP & RESTORE
+// ═══════════════════════════════════
+
+function exportBackupJSON() {
+  const data   = JSON.stringify(state, null, 2);
+  const blob   = new Blob([data], { type: 'application/json' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  const stamp  = new Date().toISOString().slice(0,10);
+  a.href       = url;
+  a.download   = 'ledger-backup-' + stamp + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exported — save it somewhere safe!');
+}
+
+function exportTransactionsCSV() {
+  const rows = [['Date','Description','Amount','Type','Category','Account']];
+  [...state.transactions]
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .forEach(t => rows.push([
+      t.date,
+      '"' + (t.desc||'').replace(/"/g,'""') + '"',
+      t.type === 'expense' ? -t.amount : t.amount,
+      t.type,
+      t.category || '',
+      t.account  || ''
+    ]));
+  const csv  = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const stamp= new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = 'ledger-transactions-' + stamp + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(state.transactions.length + ' transactions exported.');
+}
+
+function importBackupJSON(file) {
+  if (!file) return;
+  if (!confirm('This will replace ALL current data with the backup. Are you sure?')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.transactions) throw new Error('Invalid backup file — no transactions found.');
+      // Merge backup into state
+      Object.keys(backup).forEach(k => { state[k] = backup[k]; });
+      // Ensure all required fields exist
+      if (!state.bills)              state.bills              = [];
+      if (!state.trips)              state.trips              = [];
+      if (!state.hub)                state.hub                = {};
+      if (!state.vendorRules)        state.vendorRules        = {};
+      if (!state.contactRules)       state.contactRules       = {};
+      if (!state.tagColors)          state.tagColors          = {};
+      if (!state.tripCollapsed)      state.tripCollapsed      = {};
+      if (!state.dismissedSuggestions) state.dismissedSuggestions = [];
+      if (!state._migrations)        state._migrations        = {};
+      saveState();
+      refreshDashboard();
+      refreshTransactions();
+      showToast('Backup restored — ' + state.transactions.length + ' transactions loaded.');
+    } catch(err) {
+      showToast('Could not restore: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
 
 function clearAllData() {
   if (!confirm('This will permanently delete all your data. Are you sure?')) return;
@@ -5910,7 +6552,7 @@ if (!hadSavedData) {
 // ── Migrate existing data to apply all current rules retroactively ────────
 function guessAccountFromDesc(desc) {
   const d = (desc||'').toLowerCase();
-  if (/interac e-transfer|simplii|scotiabank.*chq|preauth.*nslsc|nb power|nslsc|pearlmaid|be clean/i.test(d)) return 'Simplii Financial';
+  if (/interac e-transfer|simplii|scotiabank.*chq|preauth.*nslsc|nb power|nslsc/i.test(d)) return 'Simplii Financial';
   if (/wealthsimple|ws |buy |sell |dividend|drip/i.test(d)) return 'Wealthsimple Activities Export';
   if (/payment thank you|paiemen t merci|purchase interest/i.test(d)) return 'CIBC Credit Card';
   if (/td.*visa|td.*mc|td.*amex/i.test(d)) return 'TD Credit Card';
@@ -5918,6 +6560,8 @@ function guessAccountFromDesc(desc) {
 }
 
 function migrateExistingData() {
+  // Only run each migration step once — tracked by version flags in state
+  if (!state._migrations) state._migrations = {};
   let changed = 0;
 
   // ── Step 0a: Fix old WS trade/dividend/interest transactions typed incorrectly
@@ -5939,7 +6583,7 @@ function migrateExistingData() {
   });
 
   // Patterns for own inter-bank moves — must become 'bank-transfer'
-  const OWN_BANK    = /e-transfer send kurt wealthsimple|wealthsimple investments inc?|e-transfer receive kurt hamlyn|investment wealthsimple/i;
+  const OWN_BANK    = /wealthsimple investments inc?|investment wealthsimple/i;
   // Patterns for credit card payments — must become type='transfer', cat='Credit Card Payment'
   const CC_PAYMENT  = /payment thank you|paiemen t merci|internet bill payment/i;
   // Patterns for person-to-person e-transfers — stay as type='transfer' WITH a contact
