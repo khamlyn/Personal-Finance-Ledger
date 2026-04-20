@@ -7,25 +7,66 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
 
 <style>
-  :root {
-    --bg: #0d0f0e;
-    --surface: #141714;
-    --surface2: #1b1f1b;
-    --border: #2a2f2a;
-    --accent: #b5f23a;
-    --accent2: #3af2a8;
-    --accent3: #f2a83a;
+  :root, [data-theme="dark"] {
+    --bg: #0a0c0b;
+    --surface: #121513;
+    --surface2: #181c19;
+    --surface3: #1f2420;
+    --border: #242a25;
+    --border-strong: #2e3530;
+    --accent: #c4f23a;
+    --accent-dim: rgba(196,242,58,0.12);
+    --accent2: #4af2b0;
+    --accent3: #f2b848;
     --red: #f25a3a;
+    --red-dim: rgba(242,90,58,0.12);
     --text: #e8ede8;
+    --text-soft: #c0c8c0;
     --muted: #6b756b;
+    --muted-soft: #4a524a;
     --serif: 'DM Serif Display', serif;
     --mono: 'DM Mono', monospace;
     --sans: 'DM Sans', sans-serif;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.15);
+    --shadow-pop:  0 8px 32px rgba(0,0,0,0.5);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 180ms cubic-bezier(0.2, 0, 0.2, 1);
+  }
+
+  [data-theme="light"] {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --surface2: #f3f5f1;
+    --surface3: #e9ede6;
+    --border: #e3e7e0;
+    --border-strong: #d0d6cc;
+    --accent: #4e9b1e;
+    --accent-dim: rgba(78,155,30,0.1);
+    --accent2: #1a9f6e;
+    --accent3: #d18b00;
+    --red: #d04a2a;
+    --red-dim: rgba(208,74,42,0.1);
+    --text: #1a1e1a;
+    --text-soft: #3d453d;
+    --muted: #6b756b;
+    --muted-soft: #9aa59a;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+    --shadow-pop:  0 8px 32px rgba(0,0,0,0.1);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { color-scheme: dark; }
+  html[data-theme="light"] { color-scheme: light; }
 
   body {
     background: var(--bg);
@@ -33,19 +74,25 @@
     font-family: var(--sans);
     min-height: 100vh;
     overflow-x: hidden;
+    font-feature-settings: "cv11","ss01";
+    -webkit-font-smoothing: antialiased;
+    transition: background-color var(--transition), color var(--transition);
   }
 
-  /* GRID NOISE TEXTURE */
+  /* Subtle grid texture — visible in dark mode only */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.012) 39px, rgba(255,255,255,0.012) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.012) 39px, rgba(255,255,255,0.012) 40px);
     pointer-events: none;
     z-index: 0;
+    opacity: 1;
+    transition: opacity var(--transition);
   }
+  [data-theme="light"] body::before { opacity: 0.4; }
 
   /* LAYOUT */
   .shell {
@@ -66,6 +113,7 @@
     position: sticky;
     top: 0;
     height: 100vh;
+    transition: background-color var(--transition), border-color var(--transition);
   }
 
   .logo {
@@ -173,24 +221,30 @@
   .stat-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: var(--radius);
+    padding: 20px 22px;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.2s;
+    transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    box-shadow: var(--shadow-card);
   }
 
-  .stat-card:hover { border-color: var(--accent); }
+  .stat-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
 
   .stat-card::after {
     content: '';
     position: absolute;
     bottom: 0; right: 0;
-    width: 60px; height: 60px;
+    width: 80px; height: 80px;
     border-radius: 50%;
-    opacity: 0.08;
-    transform: translate(20px, 20px);
+    opacity: 0.07;
+    transform: translate(30px, 30px);
+    transition: opacity var(--transition);
   }
+  .stat-card:hover::after { opacity: 0.12; }
 
   .stat-card.green::after { background: var(--accent); }
   .stat-card.teal::after { background: var(--accent2); }
@@ -203,14 +257,16 @@
     text-transform: uppercase;
     letter-spacing: 1.5px;
     color: var(--muted);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    font-weight: 500;
   }
 
   .stat-value {
     font-family: var(--serif);
-    font-size: 28px;
+    font-size: 30px;
     color: var(--text);
     line-height: 1;
+    letter-spacing: -0.5px;
   }
 
   .stat-value.positive { color: var(--accent); }
@@ -219,19 +275,20 @@
   .stat-change {
     font-family: var(--mono);
     font-size: 11px;
-    margin-top: 8px;
+    margin-top: 10px;
     color: var(--muted);
   }
 
   /* SECTION TITLES */
   .section-title {
     font-family: var(--serif);
-    font-size: 20px;
+    font-size: 22px;
     color: var(--text);
     margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    letter-spacing: -0.3px;
   }
 
   .section-title::after {
@@ -260,9 +317,12 @@
   .chart-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 24px;
+    box-shadow: var(--shadow-card);
+    transition: border-color var(--transition);
   }
+  .chart-card:hover { border-color: var(--border-strong); }
 
   .chart-card-title {
     font-family: var(--mono);
@@ -1075,6 +1135,12 @@
       <div class="nav-item" onclick="switchView('trips')">
         <span class="nav-icon">✈</span> Trips
       </div>
+      <div class="nav-item" onclick="switchView('retirement')">
+        <span class="nav-icon">◊</span> Retirement
+      </div>
+      <div class="nav-item" onclick="switchView('nwhistory')">
+        <span class="nav-icon">📈</span> Net Worth History
+      </div>
       <div class="nav-item" onclick="switchView('settings')">
         <span class="nav-icon">⚙</span> Settings
       </div>
@@ -1094,90 +1160,138 @@
     <div id="view-dashboard" class="view active">
       <div class="page-header">
         <div>
-          <div class="page-title">Overview</div>
+          <div class="page-title" id="dash-greeting">Overview</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;" id="dash-subgreeting"></div>
         </div>
-        <div class="page-date" id="today-date"></div>
-      </div>
-
-      <div class="stat-grid">
-        <div class="stat-card green">
-          <div class="stat-label">Net Worth</div>
-          <div class="stat-value positive" id="dash-networth">$0</div>
-          <div class="stat-change" id="dash-networth-sub">assets − liabilities</div>
-        </div>
-        <div class="stat-card teal">
-          <div class="stat-label">This Month Income</div>
-          <div class="stat-value" id="dash-income">$0</div>
-          <div class="stat-change" id="dash-income-sub">—</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-label">This Month Spending</div>
-          <div class="stat-value" id="dash-spending">$0</div>
-          <div class="stat-change" id="dash-spending-sub">—</div>
-        </div>
-        <div class="stat-card red">
-          <div class="stat-label">Monthly Balance</div>
-          <div class="stat-value" id="dash-balance">$0</div>
-          <div class="stat-change">income − expenses</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="page-date" id="today-date"></div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="openDashboardCustomizer()">⚙ Customize</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="toggleTheme()" title="Toggle light/dark mode" id="theme-toggle-btn">🌙</button>
         </div>
       </div>
 
-      <div class="three-col">
-        <div class="chart-card">
-          <div class="chart-card-title">Spending by Category · This Month</div>
-          <canvas id="chart-category"></canvas>
-        </div>
-        <div class="chart-card">
-          <div class="chart-card-title">Income vs Spending · Last 6 Months</div>
-          <canvas id="chart-trend"></canvas>
-        </div>
+      <div id="dash-widget-container">
+        <!-- widgets injected by renderDashboardWidgets() -->
       </div>
 
-      <!-- CALENDAR -->
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <div class="section-title" style="margin-bottom:0;">Monthly Calendar</div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(-1)">‹</button>
-          <span id="cal-month-label" style="font-family:var(--mono); font-size:13px; min-width:130px; text-align:center;"></span>
-          <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(1)">›</button>
-          <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="calGoToday()">Today</button>
-          <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="openModal('bill-modal')">+ Recurring Bill</button>
-        </div>
-      </div>
-
-      <div class="chart-card" style="padding:20px; margin-bottom:28px;">
-        <!-- Day-of-week headers -->
-        <div class="cal-dow-row">
-          <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
-          <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
-        </div>
-        <div id="cal-grid" class="cal-grid"></div>
-
-        <!-- Legend -->
-        <div style="display:flex; gap:16px; margin-top:14px; flex-wrap:wrap; padding-top:14px; border-top:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
-            <span style="width:10px;height:10px;border-radius:2px;background:rgba(242,90,58,0.5);display:inline-block;"></span>Spending
+      <!-- ORIGINAL sections kept as templates — hidden until widget renders them -->
+      <template id="widget-kpis">
+        <div class="stat-grid">
+          <div class="stat-card green">
+            <div class="stat-label">Net Worth</div>
+            <div class="stat-value positive" id="dash-networth">$0</div>
+            <div class="stat-change" id="dash-networth-sub">assets − liabilities</div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
-            <span style="width:10px;height:10px;border-radius:2px;background:rgba(181,242,58,0.5);display:inline-block;"></span>Income
+          <div class="stat-card teal">
+            <div class="stat-label">This Month Income</div>
+            <div class="stat-value" id="dash-income">$0</div>
+            <div class="stat-change" id="dash-income-sub">—</div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
-            <span style="width:10px;height:10px;border-radius:50%;background:rgba(242,168,58,0.7);display:inline-block;"></span>Recurring bill
+          <div class="stat-card orange">
+            <div class="stat-label">This Month Spending</div>
+            <div class="stat-value" id="dash-spending">$0</div>
+            <div class="stat-change" id="dash-spending-sub">—</div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);">
-            <span style="width:10px;height:10px;border-radius:50%;background:rgba(58,175,242,0.7);display:inline-block;"></span>Future bill
+          <div class="stat-card red">
+            <div class="stat-label">Monthly Balance</div>
+            <div class="stat-value" id="dash-balance">$0</div>
+            <div class="stat-change">income − expenses</div>
           </div>
         </div>
-      </div>
+      </template>
 
-      <!-- RECURRING BILLS LIST -->
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-        <div class="section-title" style="margin-bottom:0; flex:1;">Recurring Bills</div>
-        <button class="btn btn-ghost" style="font-size:11px;" onclick="openRecurringSuggestionsModal()">⟳ Auto-Detect</button>
-      </div>
-      <div id="bills-list" class="chart-card" style="padding:0; overflow:hidden; margin-bottom:28px;">
-        <div class="empty-state" style="padding:30px;"><div class="empty-icon">🔄</div><div class="empty-text">No recurring bills yet. Add one above.</div></div>
-      </div>
+      <template id="widget-extra-kpis">
+        <div class="stat-grid">
+          <div class="stat-card green">
+            <div class="stat-label">Savings Rate</div>
+            <div class="stat-value" id="dash-savings-rate">—</div>
+            <div class="stat-change">% of income saved</div>
+          </div>
+          <div class="stat-card teal">
+            <div class="stat-label">Upcoming Bills (7 days)</div>
+            <div class="stat-value" id="dash-upcoming-bills">$0</div>
+            <div class="stat-change" id="dash-upcoming-bills-count">0 bills</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-label">Top Category</div>
+            <div class="stat-value" style="font-size:20px;" id="dash-top-cat">—</div>
+            <div class="stat-change" id="dash-top-cat-amt">—</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">Budget Used</div>
+            <div class="stat-value" id="dash-budget-used">—</div>
+            <div class="stat-change" id="dash-budget-used-sub">this month</div>
+          </div>
+        </div>
+      </template>
+
+      <template id="widget-charts">
+        <div class="three-col">
+          <div class="chart-card">
+            <div class="chart-card-title">Spending by Category · This Month</div>
+            <canvas id="chart-category"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-title">Income vs Spending · Last 6 Months</div>
+            <canvas id="chart-trend"></canvas>
+          </div>
+        </div>
+      </template>
+
+      <template id="widget-spending-pulse">
+        <div class="section-title">Spending Pulse</div>
+        <div id="spending-pulse-container" class="chart-card" style="margin-bottom:28px;"></div>
+      </template>
+
+      <template id="widget-calendar">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div class="section-title" style="margin-bottom:0;">Monthly Calendar</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(-1)">‹</button>
+            <span id="cal-month-label" style="font-family:var(--mono); font-size:13px; min-width:130px; text-align:center;"></span>
+            <button class="btn btn-ghost" style="padding:6px 12px;" onclick="calNav(1)">›</button>
+            <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="calGoToday()">Today</button>
+            <button class="btn btn-ghost" style="padding:6px 12px; font-size:11px;" onclick="openModal('bill-modal')">+ Recurring Bill</button>
+          </div>
+        </div>
+        <div class="chart-card" style="padding:20px; margin-bottom:28px;">
+          <div class="cal-dow-row">
+            <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
+            <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+          <div style="display:flex; gap:16px; margin-top:14px; flex-wrap:wrap; padding-top:14px; border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(242,90,58,0.5);display:inline-block;"></span>Spending</div>
+            <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(181,242,58,0.5);display:inline-block;"></span>Income</div>
+            <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:rgba(242,168,58,0.7);display:inline-block;"></span>Recurring bill</div>
+            <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:rgba(58,175,242,0.7);display:inline-block;"></span>Future bill</div>
+          </div>
+        </div>
+      </template>
+
+      <template id="widget-bills">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+          <div class="section-title" style="margin-bottom:0; flex:1;">Recurring Bills</div>
+          <button class="btn btn-ghost" style="font-size:11px;" onclick="openRecurringSuggestionsModal()">⟳ Auto-Detect</button>
+        </div>
+        <div id="bills-list" class="chart-card" style="padding:0; overflow:hidden; margin-bottom:28px;">
+          <div class="empty-state" style="padding:30px;"><div class="empty-icon">🔄</div><div class="empty-text">No recurring bills yet.</div></div>
+        </div>
+      </template>
+
+      <template id="widget-recent-tx">
+        <div class="section-title">Recent Transactions</div>
+        <div class="chart-card" style="padding:0;overflow:hidden;margin-bottom:28px;">
+          <table class="tx-table" id="recent-tx-table">
+            <thead>
+              <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr>
+            </thead>
+            <tbody id="recent-tx-body">
+              <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
 
       <!-- DAY DETAIL POPOVER -->
       <div id="day-popover" style="display:none; position:fixed; z-index:150; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; min-width:260px; max-width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
@@ -1188,19 +1302,6 @@
         <div id="popover-body"></div>
       </div>
 
-      <div class="section-title">Recent Transactions</div>
-      <div class="chart-card">
-        <table class="tx-table" id="recent-tx-table">
-          <thead>
-            <tr>
-              <th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th>
-            </tr>
-          </thead>
-          <tbody id="recent-tx-body">
-            <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet. Add one in Transactions.</div></div></td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
 
     <!-- ═══════════ TRANSACTIONS ═══════════ -->
@@ -1383,7 +1484,8 @@
               <div class="bank-badge active">☀️ Sun Life</div>
               <div class="bank-badge">🏦 RBC</div>
               <div class="bank-badge">🏦 BMO</div>
-              <div class="bank-badge">📄 Generic</div>
+              <div class="bank-badge">📄 PDF Statements</div>
+              <div class="bank-badge">📄 Generic CSV</div>
             </div>
           </div>
           <button class="btn btn-ghost" style="font-size:11px;" onclick="toggleGuide()">📖 Export guides ▾</button>
@@ -1394,7 +1496,7 @@
           <strong style="color:var(--accent)">🟢 Simplii Financial:</strong> Online Banking → Account History → <strong style="color:var(--text)">Download → CSV (Quicken/Excel format)</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank (Chequing/LOC):</strong> Online Banking → Accounts → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🔴 Scotiabank Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
-          <strong style="color:var(--accent)">🏦 OFX/QFX (TD, RBC, BMO, CIBC, Scotia):</strong> Online Banking → Download → <strong style="color:var(--text)">OFX or QFX format</strong> — works with all major banks<br><strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
+          <strong style="color:var(--accent)">📄 PDF statements (TD):</strong> Drop any TD credit card PDF statement directly — parsed locally, nothing uploaded<br><strong style="color:var(--accent)">🏦 OFX/QFX (TD, RBC, BMO, CIBC, Scotia):</strong> Online Banking → Download → <strong style="color:var(--text)">OFX or QFX format</strong> — works with all major banks<br><strong style="color:var(--accent)">🟩 TD Chequing:</strong> EasyWeb → Accounts → <strong style="color:var(--text)">Download transactions → Other → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Credit Card (with headers):</strong> EasyWeb → Credit Card → <strong style="color:var(--text)">Download transactions → CSV</strong><br>
           <strong style="color:var(--accent)">🟩 TD Aeroplan Visa:</strong> Online Banking → Credit Card → View account activity → <strong style="color:var(--text)">Download → CSV</strong> (select each date range, drop all files at once)<br>
           <strong style="color:var(--accent)">🔵 CIBC Credit Card:</strong> Online Banking → Credit Card → <strong style="color:var(--text)">Download → CSV</strong><br>
@@ -1405,8 +1507,8 @@
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" style="margin-bottom:12px;">
         <div class="drop-icon">⇡</div>
         <div class="drop-label">Drop one or more bank CSVs here or <span>click to browse</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">CSV, OFX, or QFX — drop one or more files at once</div>
-        <input type="file" id="csv-file" accept=".csv,.ofx,.qfx" multiple style="display:none" onchange="handleFileList(this.files)">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">CSV, OFX, QFX, or PDF — drop one or more files at once</div>
+        <input type="file" id="csv-file" accept=".csv,.ofx,.qfx,.pdf" multiple style="display:none" onchange="handleFileList(this.files)">
       </div>
 
       <div id="detect-banner" style="display:none; margin-bottom:12px; padding:12px 18px; border-radius:10px; background:rgba(181,242,58,0.08); border:1px solid rgba(181,242,58,0.25); font-size:13px; align-items:center; gap:10px;">
@@ -1779,6 +1881,135 @@
           <div class="empty-text" style="margin-bottom:16px;">No trips yet. Add one to get started.</div>
           <button class="btn btn-primary" onclick="openModal('trip-modal')">+ Add Trip</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ RETIREMENT ═══════════ -->
+    <div id="view-retirement" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Retirement Projection</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;">Canadian RRSP / TFSA / CPP / OAS projections · after-tax income in retirement</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="openModal('retirement-inputs-modal')">⚙ Edit Assumptions</button>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="stat-grid" style="margin-bottom:24px;">
+        <div class="stat-card green">
+          <div class="stat-label">Projected at Retirement</div>
+          <div class="stat-value positive" id="ret-nest-egg">—</div>
+          <div class="stat-change" id="ret-nest-egg-sub">—</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Annual Income in Retirement</div>
+          <div class="stat-value" id="ret-annual-income">—</div>
+          <div class="stat-change" id="ret-replacement-ratio">—</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">CPP + OAS (Annual)</div>
+          <div class="stat-value" id="ret-cpp-oas">—</div>
+          <div class="stat-change" id="ret-cpp-oas-sub">—</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Monthly Gap</div>
+          <div class="stat-value" id="ret-gap">—</div>
+          <div class="stat-change" id="ret-gap-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Projection chart -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Net Worth Projection — Conservative · Realistic · Optimistic</div>
+        <canvas id="chart-retirement" style="max-height:320px;"></canvas>
+      </div>
+
+      <!-- Income sources chart -->
+      <div class="two-col">
+        <div class="chart-card">
+          <div class="chart-card-title">Retirement Income Sources (Year 1)</div>
+          <canvas id="chart-ret-sources" style="max-height:240px;"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Success Probability at Different Retirement Ages</div>
+          <canvas id="chart-ret-success" style="max-height:240px;"></canvas>
+        </div>
+      </div>
+
+      <!-- Text summary -->
+      <div class="chart-card" style="margin-top:24px;">
+        <div class="chart-card-title">Summary</div>
+        <div id="ret-summary-text" style="line-height:1.9;font-size:13px;color:var(--text-soft);"></div>
+      </div>
+
+      <div id="ret-setup-notice" style="display:none;margin-top:24px;padding:20px;border:1px dashed var(--border);border-radius:10px;text-align:center;">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Set up your retirement assumptions to see projections.</div>
+        <button class="btn btn-primary" onclick="openModal('retirement-inputs-modal')">Get Started →</button>
+      </div>
+    </div>
+
+    <!-- ═══════════ NET WORTH HISTORY ═══════════ -->
+    <div id="view-nwhistory" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Net Worth History</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;">Track your assets, debts, and net worth over time</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="font-size:11px;" onclick="openModal('nw-paste-modal')">⎘ Paste from Sheet</button>
+          <button class="btn btn-primary" style="font-size:11px;" onclick="openModal('nw-snapshot-modal')">+ Add Snapshot</button>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="stat-grid" style="margin-bottom:24px;">
+        <div class="stat-card green">
+          <div class="stat-label">Current Net Worth</div>
+          <div class="stat-value positive" id="nw-current">—</div>
+          <div class="stat-change" id="nw-current-sub">latest snapshot</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">YoY Change</div>
+          <div class="stat-value" id="nw-yoy">—</div>
+          <div class="stat-change" id="nw-yoy-sub">—</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Best Month</div>
+          <div class="stat-value" style="font-size:18px;" id="nw-best">—</div>
+          <div class="stat-change" id="nw-best-sub">—</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Snapshots Tracked</div>
+          <div class="stat-value" id="nw-count">0</div>
+          <div class="stat-change" id="nw-range">—</div>
+        </div>
+      </div>
+
+      <!-- Net worth chart -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Assets, Liabilities & Net Worth Over Time</div>
+        <canvas id="chart-nw-history" style="max-height:380px;"></canvas>
+      </div>
+
+      <!-- Breakdown chart -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Composition Over Time (stacked)</div>
+        <canvas id="chart-nw-composition" style="max-height:320px;"></canvas>
+      </div>
+
+      <!-- Snapshot list -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="section-title" style="margin-bottom:0;">All Snapshots</div>
+      </div>
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <table class="tx-table" id="nw-snapshots-table">
+          <thead>
+            <tr><th>Date</th><th>Assets</th><th>Liabilities</th><th>Net Worth</th><th>Δ</th><th></th></tr>
+          </thead>
+          <tbody id="nw-snapshots-body">
+            <tr><td colspan="6"><div class="empty-state" style="padding:40px;"><div class="empty-icon">📊</div><div class="empty-text" style="margin-bottom:12px;">No snapshots yet.</div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Paste your spreadsheet data, or add your first snapshot manually.</div></div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -2286,7 +2517,7 @@
         <div style="font-size:28px;margin-bottom:8px;">⇡</div>
         <div style="font-size:13px;font-weight:500;">Drop CSV / OFX / QFX here</div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">TD, Scotiabank, CIBC, Simplii, Wealthsimple, and more</div>
-        <input type="file" id="ob-file-input" accept=".csv,.ofx,.qfx" multiple style="display:none;"
+        <input type="file" id="ob-file-input" accept=".csv,.ofx,.qfx,.pdf" multiple style="display:none;"
                onchange="handleObFiles(this.files)">
       </div>
       <div id="ob-import-status" style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:10px;min-height:16px;text-align:center;"></div>
@@ -2323,6 +2554,181 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Retirement Inputs Modal -->
+<div class="modal-overlay" id="retirement-inputs-modal">
+  <div class="modal" style="max-width:620px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-title">Retirement Assumptions</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">All Canadian. Numbers are annual unless noted. Change anything and save — projections update instantly.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Current Age</label>
+        <input type="number" class="form-input" id="ret-current-age" value="35" min="18" max="99">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Retirement Age</label>
+        <input type="number" class="form-input" id="ret-retire-age" value="65" min="50" max="75">
+      </div>
+      <div class="form-group">
+        <label class="form-label">RRSP Balance ($)</label>
+        <input type="number" class="form-input" id="ret-rrsp" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">TFSA Balance ($)</label>
+        <input type="number" class="form-input" id="ret-tfsa" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Non-Registered ($)</label>
+        <input type="number" class="form-input" id="ret-nonreg" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Employer Pension ($/yr at retirement)</label>
+        <input type="number" class="form-input" id="ret-pension" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monthly RRSP Contribution ($)</label>
+        <input type="number" class="form-input" id="ret-rrsp-monthly" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monthly TFSA Contribution ($)</label>
+        <input type="number" class="form-input" id="ret-tfsa-monthly" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expected Annual Spending in Retirement ($)</label>
+        <input type="number" class="form-input" id="ret-spend" value="50000" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CPP Start Age</label>
+        <select class="form-select" id="ret-cpp-age">
+          <option value="60">60 (reduced)</option>
+          <option value="65" selected>65 (standard)</option>
+          <option value="70">70 (enhanced)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expected CPP Benefit (monthly, at start age)</label>
+        <input type="number" class="form-input" id="ret-cpp-monthly" value="1100" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expected OAS (monthly, at 65)</label>
+        <input type="number" class="form-input" id="ret-oas-monthly" value="713" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Province</label>
+        <select class="form-select" id="ret-province">
+          <option value="ON">Ontario</option>
+          <option value="BC">British Columbia</option>
+          <option value="AB">Alberta</option>
+          <option value="QC">Quebec</option>
+          <option value="MB">Manitoba</option>
+          <option value="SK">Saskatchewan</option>
+          <option value="NS">Nova Scotia</option>
+          <option value="NB" selected>New Brunswick</option>
+          <option value="PE">PEI</option>
+          <option value="NL">Newfoundland & Labrador</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Life Expectancy (age)</label>
+        <input type="number" class="form-input" id="ret-life" value="90" min="70" max="105">
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Growth Assumptions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="font-size:11px;">Conservative %</label>
+          <input type="number" class="form-input" id="ret-rate-low" value="3" step="0.1" style="font-size:12px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="font-size:11px;">Realistic %</label>
+          <input type="number" class="form-input" id="ret-rate-mid" value="5" step="0.1" style="font-size:12px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="font-size:11px;">Optimistic %</label>
+          <input type="number" class="form-input" id="ret-rate-high" value="7" step="0.1" style="font-size:12px;">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px;margin-bottom:0;">
+        <label class="form-label" style="font-size:11px;">Inflation Rate %</label>
+        <input type="number" class="form-input" id="ret-inflation" value="2.5" step="0.1" style="font-size:12px;">
+      </div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:20px;">
+      <button class="btn btn-ghost" onclick="closeModal('retirement-inputs-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRetirementInputs()">Save & Recalculate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Net Worth Paste Modal -->
+<div class="modal-overlay" id="nw-paste-modal">
+  <div class="modal" style="max-width:780px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-title">Import Net Worth History from Sheet</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.7;">
+      Copy your sheet (including the headers row and any blank rows) and paste below. Supports two layouts:<br>
+      <strong style="color:var(--accent);">Transposed</strong> (dates as columns, items as rows — like "Debt / Assets / Net Worth" sheets)<br>
+      <strong style="color:var(--accent);">Standard</strong> (one row per date, columns for Assets / Liabilities)
+    </div>
+    <textarea id="nw-paste-area" style="width:100%;min-height:220px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:var(--mono);font-size:11px;resize:vertical;" placeholder="Paste your spreadsheet data here (Ctrl+V / Cmd+V)"></textarea>
+    <button class="btn btn-ghost" style="margin-top:10px;font-size:11px;" onclick="parseNWPaste()">Parse & Preview</button>
+    <div id="nw-paste-preview" style="margin-top:16px;display:none;">
+      <div class="chart-card-title">Preview</div>
+      <div id="nw-paste-preview-content" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--surface2);"></div>
+      <div class="modal-footer" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="closeModal('nw-paste-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmNWImport()">Import All</button>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:16px;" id="nw-paste-footer">
+      <button class="btn btn-ghost" onclick="closeModal('nw-paste-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Net Worth Manual Snapshot Modal -->
+<div class="modal-overlay" id="nw-snapshot-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">Add Net Worth Snapshot</div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="nw-snap-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Total Assets ($)</label>
+      <input type="number" class="form-input" id="nw-snap-assets" min="0" step="0.01">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Total Liabilities ($)</label>
+      <input type="number" class="form-input" id="nw-snap-liabilities" min="0" step="0.01">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <input type="text" class="form-input" id="nw-snap-notes" placeholder="e.g. Paid off student loan">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('nw-snapshot-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNWSnapshot()">Save Snapshot</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard Customizer Modal -->
+<div class="modal-overlay" id="dash-customizer-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title">Customize Dashboard</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;">
+      Drag rows to reorder. Toggle checkboxes to show/hide widgets.
+    </div>
+    <div id="dash-customizer-list"></div>
+    <div class="modal-footer" style="margin-top:20px;">
+      <button class="btn btn-ghost" onclick="closeModal('dash-customizer-modal')">Done</button>
+    </div>
   </div>
 </div>
 
@@ -2372,6 +2778,18 @@ let state = {
   dismissedSuggestions: [],  // normDesc keys of dismissed recurring bill suggestions
   contactRules: {},          // contactName → { label, category }
   _onboarded: false,
+  theme: 'dark',             // 'dark' | 'light'
+  retirement: null,          // user's retirement assumptions (see saveRetirementInputs)
+  nwSnapshots: [],           // [{date, assets, liabilities, notes, breakdown?}]
+  dashWidgets: [             // widget order + visibility — user-customizable
+    { id: 'kpis',           enabled: true,  label: 'Main KPIs' },
+    { id: 'extra-kpis',     enabled: false, label: 'Extra KPIs (savings rate, upcoming bills, top category, budget)' },
+    { id: 'charts',         enabled: true,  label: 'Category + 6-month trend charts' },
+    { id: 'spending-pulse', enabled: true,  label: 'Spending Pulse (top categories with vs-budget bars)' },
+    { id: 'calendar',       enabled: true,  label: 'Monthly calendar' },
+    { id: 'bills',          enabled: true,  label: 'Recurring bills list' },
+    { id: 'recent-tx',      enabled: true,  label: 'Recent transactions' },
+  ],
 };
 
 let txFilter = 'all';
@@ -2396,7 +2814,10 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-function openModal(id) { $(id).classList.add('open'); }
+function openModal(id) {
+  $(id).classList.add('open');
+  if (id === 'retirement-inputs-modal' && typeof loadRetirementForm === 'function') loadRetirementForm();
+}
 function closeModal(id) { $(id).classList.remove('open'); }
 
 // Close modal on backdrop click
@@ -2420,6 +2841,8 @@ function switchView(view) {
   if (view === 'hub') { ensureHubItems(); renderHubGrids(); refreshNetWorthFromHub(); }
   if (view === 'holdings') { refreshHoldings(); setTimeout(refreshTradeActivity, 100); }
   if (view === 'settings') refreshSettings();
+  if (view === 'retirement') refreshRetirement();
+  if (view === 'nwhistory') refreshNetWorthHistory();
   if (view === 'transfers') refreshTransfers();
   if (view === 'account-activity') refreshAccountActivity();
   if (view === 'trips') refreshTrips();
@@ -3577,11 +4000,119 @@ function dismissRecurringSuggestion(idx) {
 }
 
 // ═══════════════════════════════════
+// THEME
+// ═══════════════════════════════════
+function applyTheme() {
+  const theme = state.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = $('theme-toggle-btn');
+  if (btn) btn.textContent = theme === 'dark' ? '☀' : '🌙';
+  // Trigger chart redraws if already rendered — pick up new text colors
+  if (typeof refreshDashboard === 'function' && document.getElementById('view-dashboard')?.classList.contains('active')) {
+    setTimeout(refreshDashboard, 50);
+  }
+}
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  saveState();
+}
+
+// ═══════════════════════════════════
+// DASHBOARD WIDGETS — customizable order & visibility
+// ═══════════════════════════════════
+function renderDashboardWidgets() {
+  const container = $('dash-widget-container');
+  if (!container) return;
+  container.innerHTML = '';
+  (state.dashWidgets || []).forEach(w => {
+    if (!w.enabled) return;
+    const tpl = $('widget-' + w.id);
+    if (!tpl) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'dash-widget';
+    wrap.dataset.widgetId = w.id;
+    wrap.appendChild(tpl.content.cloneNode(true));
+    container.appendChild(wrap);
+  });
+  updateGreeting();
+}
+
+function updateGreeting() {
+  const hr = new Date().getHours();
+  const part = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  const g = $('dash-greeting');
+  const sg = $('dash-subgreeting');
+  if (g) g.textContent = part + ' 👋';
+  if (sg) {
+    const tx = state.transactions || [];
+    if (tx.length === 0) sg.textContent = 'Import some transactions to get started.';
+    else {
+      const latest = tx.map(t => t.date).sort().pop();
+      sg.textContent = 'Latest transaction: ' + latest + ' · ' + tx.length + ' total transactions tracked.';
+    }
+  }
+}
+
+function openDashboardCustomizer() {
+  const modal = $('dash-customizer-modal');
+  if (!modal) return;
+  renderDashboardCustomizerList();
+  openModal('dash-customizer-modal');
+}
+
+function renderDashboardCustomizerList() {
+  const list = $('dash-customizer-list');
+  if (!list) return;
+  list.innerHTML = (state.dashWidgets || []).map((w, i) => `
+    <div class="dash-customizer-row" draggable="true"
+         data-index="${i}"
+         ondragstart="dashCustomDragStart(event, ${i})"
+         ondragover="event.preventDefault()"
+         ondrop="dashCustomDrop(event, ${i})"
+         style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:move;">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">≡</span>
+      <label style="flex:1;display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" ${w.enabled?'checked':''} onchange="toggleDashWidget('${w.id}', this.checked)" style="width:15px;height:15px;cursor:pointer;">
+        <span style="font-size:13px;">${w.label}</span>
+      </label>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">${w.id}</span>
+    </div>`).join('');
+}
+
+function toggleDashWidget(id, enabled) {
+  const w = (state.dashWidgets || []).find(x => x.id === id);
+  if (!w) return;
+  w.enabled = enabled;
+  saveState();
+  renderDashboardWidgets();
+  refreshDashboard();
+}
+
+let _dashDragIdx = null;
+function dashCustomDragStart(e, idx) { _dashDragIdx = idx; }
+function dashCustomDrop(e, toIdx) {
+  e.preventDefault();
+  if (_dashDragIdx === null || _dashDragIdx === toIdx) return;
+  const arr = state.dashWidgets || [];
+  const [moved] = arr.splice(_dashDragIdx, 1);
+  arr.splice(toIdx, 0, moved);
+  _dashDragIdx = null;
+  saveState();
+  renderDashboardCustomizerList();
+  renderDashboardWidgets();
+  refreshDashboard();
+}
+
+// ═══════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════
 let chartCategory, chartTrend;
 
 function refreshDashboard() {
+  // Always render widgets first — this injects the DOM that the rest of refreshDashboard relies on
+  renderDashboardWidgets();
+
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
@@ -3597,22 +4128,58 @@ function refreshDashboard() {
   const balance = income - spending;
   const netWorth = state.assets.reduce((s, a) => s + a.value, 0) - state.liabilities.reduce((s, l) => s + l.value, 0);
 
-  $('dash-networth').textContent = (netWorth >= 0 ? '' : '-') + fmt(netWorth);
-  $('dash-networth').className = 'stat-value ' + (netWorth >= 0 ? 'positive' : 'negative');
-  $('dash-income').textContent = fmt(income);
-  $('dash-spending').textContent = fmt(spending);
-  $('dash-balance').textContent = (balance >= 0 ? '+' : '-') + fmt(balance);
-  $('dash-balance').className = 'stat-value ' + (balance >= 0 ? 'positive' : 'negative');
+  // Main KPIs
+  if ($('dash-networth')) { $('dash-networth').textContent = (netWorth >= 0 ? '' : '-') + fmt(netWorth); $('dash-networth').className = 'stat-value ' + (netWorth >= 0 ? 'positive' : 'negative'); }
+  if ($('dash-income'))   $('dash-income').textContent   = fmt(income);
+  if ($('dash-spending')) $('dash-spending').textContent = fmt(spending);
+  if ($('dash-balance'))  { $('dash-balance').textContent  = (balance >= 0 ? '+' : '-') + fmt(balance); $('dash-balance').className = 'stat-value ' + (balance >= 0 ? 'positive' : 'negative'); }
 
-  // Month-over-month % change
+  // Extra KPIs — only render if their widget is enabled (elements exist)
+  if ($('dash-savings-rate')) {
+    const sr = income > 0 ? ((income - spending) / income * 100) : 0;
+    $('dash-savings-rate').textContent = sr.toFixed(1) + '%';
+  }
+  if ($('dash-upcoming-bills')) {
+    const today = new Date();
+    const in7 = new Date(today); in7.setDate(today.getDate()+7);
+    const upBills = (state.bills || []).filter(b => {
+      const day = +b.day;
+      const next = new Date(today.getFullYear(), today.getMonth(), day);
+      if (next < today) next.setMonth(next.getMonth()+1);
+      return next <= in7;
+    });
+    const total = upBills.reduce((s,b) => s + +b.amount, 0);
+    $('dash-upcoming-bills').textContent = fmt(total);
+    if ($('dash-upcoming-bills-count')) $('dash-upcoming-bills-count').textContent = upBills.length + ' bill' + (upBills.length !== 1 ? 's' : '');
+  }
+  if ($('dash-top-cat')) {
+    const cats = {};
+    thisMo.filter(t => t.type === 'expense').forEach(t => { cats[t.category || 'Unknown'] = (cats[t.category || 'Unknown'] || 0) + t.amount; });
+    const top = Object.entries(cats).sort((a,b) => b[1] - a[1])[0];
+    if (top) { $('dash-top-cat').textContent = top[0]; if ($('dash-top-cat-amt')) $('dash-top-cat-amt').textContent = fmt(top[1]); }
+    else     { $('dash-top-cat').textContent = '—'; }
+  }
+  if ($('dash-budget-used')) {
+    const totalBudget = (state.budgets || []).reduce((s,b) => s + (b.limit || 0), 0);
+    if (totalBudget > 0) {
+      const pct = (spending / totalBudget * 100);
+      $('dash-budget-used').textContent = pct.toFixed(0) + '%';
+      if ($('dash-budget-used-sub')) $('dash-budget-used-sub').textContent = fmt(spending) + ' of ' + fmt(totalBudget);
+    } else {
+      $('dash-budget-used').textContent = '—';
+      if ($('dash-budget-used-sub')) $('dash-budget-used-sub').textContent = 'no budget set';
+    }
+  }
+
+  // MoM
   const prevMonth = month === 0 ? 11 : month - 1;
   const prevYear  = month === 0 ? year - 1 : year;
   const prevMo = state.transactions.filter(t => {
     const d = new Date(t.date + 'T12:00:00');
     return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
   });
-  const prevIncome  = prevMo.filter(t => t.type === 'income' ).reduce((s,t) => s+t.amount, 0);
-  const prevSpend   = prevMo.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+  const prevIncome = prevMo.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const prevSpend  = prevMo.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
   function momBadge(cur, prev, lowerIsBetter) {
     if (!prev) return '—';
     const pct = ((cur - prev) / prev * 100);
@@ -3621,107 +4188,833 @@ function refreshDashboard() {
     const color = Math.abs(pct) < 2 ? 'var(--muted)' : (good ? 'var(--accent)' : 'var(--red)');
     return '<span style="color:' + color + ';font-size:11px;">' + (up?'↑':'↓') + Math.abs(pct).toFixed(1) + '% vs last month</span>';
   }
-  const incSub  = $('dash-income-sub');
-  const spdSub  = $('dash-spending-sub');
-  if (incSub)  incSub.innerHTML  = momBadge(income,   prevIncome, false);
-  if (spdSub)  spdSub.innerHTML  = momBadge(spending, prevSpend,  true);
+  if ($('dash-income-sub'))   $('dash-income-sub').innerHTML   = momBadge(income,   prevIncome, false);
+  if ($('dash-spending-sub')) $('dash-spending-sub').innerHTML = momBadge(spending, prevSpend,  true);
 
-  // Recent transactions — newest first, exclude transfers and invest trades
-  const recent = [...state.transactions]
-    .filter(t => t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest')
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 12);
-  const rb = $('recent-tx-body');
-  if (recent.length === 0) {
-    rb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>`;
-  } else {
-    rb.innerHTML = recent.map(t => {
-      const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
-      return `<tr>
-        <td><span class="highlight-val">${t.date}</span></td>
-        <td>${t.desc}</td>
-        <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'—'}</span></td>
-        <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
-        <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
-      </tr>`;
-    }).join('');
+  // Spending Pulse — top categories with budget comparison
+  renderSpendingPulse(thisMo);
+
+  // Recent transactions (if that widget is visible)
+  if ($('recent-tx-body')) {
+    const recent = [...state.transactions]
+      .filter(t => t.type !== 'transfer' && t.type !== 'bank-transfer' && t.type !== 'invest')
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 12);
+    const rb = $('recent-tx-body');
+    if (recent.length === 0) {
+      rb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">↕</div><div class="empty-text">No transactions yet.</div></div></td></tr>`;
+    } else {
+      rb.innerHTML = recent.map(t => {
+        const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+        return `<tr>
+          <td><span class="highlight-val">${t.date}</span></td>
+          <td>${t.desc}</td>
+          <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'—'}</span></td>
+          <td style="font-family:var(--mono); font-size:12px; color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
+          <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+        </tr>`;
+      }).join('');
+    }
   }
 
-  // Category Chart
+  // Charts only if visible
+  if ($('chart-category')) renderCategoryChart(thisMo);
+  if ($('chart-trend'))    renderTrendChart();
+
+  // Calendar + bills
+  if ($('cal-grid'))  renderCalendar();
+  if ($('bills-list')) renderBillsList();
+}
+
+function renderSpendingPulse(thisMo) {
+  const container = $('spending-pulse-container');
+  if (!container) return;
+  const cats = {};
+  thisMo.filter(t => t.type === 'expense').forEach(t => { cats[t.category || 'Unknown'] = (cats[t.category || 'Unknown'] || 0) + t.amount; });
+  const sorted = Object.entries(cats).sort((a,b) => b[1] - a[1]).slice(0, 8);
+  if (sorted.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:30px;"><div class="empty-text">No spending data this month.</div></div>';
+    return;
+  }
+  const maxAmt = sorted[0][1];
+  // Previous month for comparison
+  const now = new Date();
+  const prevMo = state.transactions.filter(t => {
+    const d = new Date(t.date + 'T12:00:00');
+    const pm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const py = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    return d.getMonth() === pm && d.getFullYear() === py && t.type === 'expense';
+  });
+  const prevCats = {};
+  prevMo.forEach(t => { prevCats[t.category || 'Unknown'] = (prevCats[t.category || 'Unknown'] || 0) + t.amount; });
+  const budgets = {};
+  (state.budgets || []).forEach(b => { budgets[b.category] = b.limit; });
+
+  container.innerHTML = '<div style="padding:20px;">' + sorted.map(([cat, amt]) => {
+    const pct   = (amt / maxAmt * 100);
+    const prev  = prevCats[cat] || 0;
+    const momP  = prev > 0 ? ((amt - prev) / prev * 100) : null;
+    const budg  = budgets[cat];
+    const budgPct = budg ? (amt / budg * 100) : null;
+    const overBudget = budg && amt > budg;
+    const momColor = momP === null ? 'var(--muted)' : (momP > 5 ? 'var(--red)' : (momP < -5 ? 'var(--accent)' : 'var(--muted)'));
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+        <span style="font-weight:500;">${cat}</span>
+        <span style="font-family:var(--mono);">${fmt(amt)}${budg ? ` <span style="color:${overBudget?'var(--red)':'var(--muted)'};font-size:10px;">/ ${fmt(budg)} (${budgPct.toFixed(0)}%)</span>` : ''}</span>
+      </div>
+      <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;position:relative;">
+        <div style="height:100%;width:${pct}%;background:${overBudget ? 'var(--red)' : 'linear-gradient(90deg, var(--accent), var(--accent2))'};transition:width 400ms ease;"></div>
+      </div>
+      ${momP !== null ? `<div style="font-family:var(--mono);font-size:10px;color:${momColor};margin-top:2px;">${momP > 0 ? '↑' : '↓'} ${Math.abs(momP).toFixed(0)}% vs last month · ${fmt(prev)}</div>` : ''}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function renderCategoryChart(thisMo) {
   const cats = {};
   thisMo.filter(t => t.type === 'expense' || t.type === 'invest').forEach(t => {
     cats[t.category] = (cats[t.category] || 0) + t.amount;
   });
-
   const catLabels = Object.keys(cats);
   const catData = Object.values(cats);
-  const palette = ['#b5f23a','#3af2a8','#f2a83a','#f25a3a','#3ab5f2','#a83af2','#f23aa8','#3af2e8'];
-
+  const palette = ['#c4f23a','#4af2b0','#f2b848','#f25a3a','#3ab5f2','#a83af2','#f23aa8','#3af2e8'];
   if (chartCategory) chartCategory.destroy();
-  const ctxCat = $('chart-category').getContext('2d');
-  chartCategory = new Chart(ctxCat, {
+  const ctx = $('chart-category').getContext('2d');
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  chartCategory = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: catLabels.length ? catLabels : ['No data'],
-      datasets: [{
-        data: catData.length ? catData : [1],
-        backgroundColor: catLabels.length ? palette.slice(0, catLabels.length) : ['#2a2f2a'],
-        borderWidth: 0
-      }]
+      datasets: [{ data: catData.length ? catData : [1], backgroundColor: catLabels.length ? palette.slice(0, catLabels.length) : ['#2a2f2a'], borderWidth: 0 }]
     },
     options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#6b756b', font: { family: 'DM Mono', size: 10 }, padding: 10 }
-        }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 8 } } },
       cutout: '65%'
     }
   });
+}
 
-  // Trend Chart (last 6 months)
+function renderTrendChart() {
+  const now = new Date();
   const months = [];
-  const incomeData = [];
-  const spendData = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(year, month - i, 1);
-    const m = d.getMonth();
-    const y = d.getFullYear();
-    months.push(d.toLocaleString('default', { month: 'short' }));
-    const mo = state.transactions.filter(t => {
-      const td = new Date(t.date);
-      return td.getMonth() === m && td.getFullYear() === y;
-    });
-    incomeData.push(mo.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
-    spendData.push(mo.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: d.toLocaleString('en', {month:'short'}), m: d.getMonth(), y: d.getFullYear() });
   }
-
+  const incomeArr = months.map(mo => state.transactions.filter(t => { const d = new Date(t.date + 'T12:00:00'); return d.getMonth()===mo.m && d.getFullYear()===mo.y && t.type==='income'; }).reduce((s,t)=>s+t.amount,0));
+  const spendArr  = months.map(mo => state.transactions.filter(t => { const d = new Date(t.date + 'T12:00:00'); return d.getMonth()===mo.m && d.getFullYear()===mo.y && t.type==='expense'; }).reduce((s,t)=>s+t.amount,0));
   if (chartTrend) chartTrend.destroy();
-  chartTrend = new Chart($('chart-trend').getContext('2d'), {
+  const ctx = $('chart-trend').getContext('2d');
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  chartTrend = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: months,
+      labels: months.map(m => m.label),
       datasets: [
-        { label: 'Income', data: incomeData, backgroundColor: 'rgba(181,242,58,0.5)', borderColor: '#b5f23a', borderWidth: 1, borderRadius: 4 },
-        { label: 'Spending', data: spendData, backgroundColor: 'rgba(242,90,58,0.4)', borderColor: '#f25a3a', borderWidth: 1, borderRadius: 4 }
+        { label: 'Income', data: incomeArr, backgroundColor: 'rgba(196,242,58,0.5)', borderColor: '#c4f23a', borderWidth: 1 },
+        { label: 'Spending', data: spendArr, backgroundColor: 'rgba(242,90,58,0.5)', borderColor: '#f25a3a', borderWidth: 1 },
       ]
     },
     options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: '#6b756b', font: { family: 'DM Mono', size: 10 } } }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
       scales: {
-        x: { ticks: { color: '#6b756b', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1b1f1b' } },
-        y: { ticks: { color: '#6b756b', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#1b1f1b' } }
+        x: { ticks: { color: textColor, font: { family: 'DM Mono', size: 10 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font: { family: 'DM Mono', size: 10 } }, grid: { color: gridColor } }
       }
     }
   });
+}
 
-  // Render calendar (stays on current viewed month, doesn't reset to today)
-  renderCalendar();
+// ═══════════════════════════════════
+// RETIREMENT PROJECTOR (Canadian)
+// ═══════════════════════════════════
+
+// Default assumptions derived from existing state (Holdings, Hub, etc.)
+function defaultRetirementInputs() {
+  // Try to pre-fill from existing holdings + hub
+  let rrsp = 0, tfsa = 0, nonreg = 0;
+  (state.holdings || []).forEach(h => {
+    const at = (h.accountType || '').toLowerCase();
+    const v = +h.marketValue || 0;
+    if (at.includes('rrsp')) rrsp += v;
+    else if (at.includes('tfsa')) tfsa += v;
+    else nonreg += v;
+  });
+  // Add hub RRSP values if present
+  if (state.hub && state.hub.items) {
+    state.hub.items.filter(i => i.type === 'investment').forEach(i => {
+      if (/rrsp/i.test(i.name)) rrsp += (+i.value || 0);
+      else if (/tfsa/i.test(i.name)) tfsa += (+i.value || 0);
+      else nonreg += (+i.value || 0);
+    });
+  }
+  return {
+    currentAge: 35, retireAge: 65,
+    rrsp: Math.round(rrsp), tfsa: Math.round(tfsa), nonreg: Math.round(nonreg),
+    pension: 0,
+    rrspMonthly: 0, tfsaMonthly: 0,
+    spend: 50000,
+    cppAge: 65, cppMonthly: 1100, oasMonthly: 713,
+    province: 'NB',
+    life: 90,
+    rateLow: 3, rateMid: 5, rateHigh: 7,
+    inflation: 2.5
+  };
+}
+
+function loadRetirementForm() {
+  const r = state.retirement || defaultRetirementInputs();
+  const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('ret-current-age', r.currentAge);
+  set('ret-retire-age', r.retireAge);
+  set('ret-rrsp', r.rrsp);
+  set('ret-tfsa', r.tfsa);
+  set('ret-nonreg', r.nonreg);
+  set('ret-pension', r.pension);
+  set('ret-rrsp-monthly', r.rrspMonthly);
+  set('ret-tfsa-monthly', r.tfsaMonthly);
+  set('ret-spend', r.spend);
+  set('ret-cpp-age', r.cppAge);
+  set('ret-cpp-monthly', r.cppMonthly);
+  set('ret-oas-monthly', r.oasMonthly);
+  set('ret-province', r.province);
+  set('ret-life', r.life);
+  set('ret-rate-low', r.rateLow);
+  set('ret-rate-mid', r.rateMid);
+  set('ret-rate-high', r.rateHigh);
+  set('ret-inflation', r.inflation);
+}
+
+function saveRetirementInputs() {
+  const g = id => { const el = $(id); return el ? (el.value) : null; };
+  const num = id => parseFloat(g(id)) || 0;
+  state.retirement = {
+    currentAge: num('ret-current-age'),
+    retireAge: num('ret-retire-age'),
+    rrsp: num('ret-rrsp'),
+    tfsa: num('ret-tfsa'),
+    nonreg: num('ret-nonreg'),
+    pension: num('ret-pension'),
+    rrspMonthly: num('ret-rrsp-monthly'),
+    tfsaMonthly: num('ret-tfsa-monthly'),
+    spend: num('ret-spend'),
+    cppAge: num('ret-cpp-age'),
+    cppMonthly: num('ret-cpp-monthly'),
+    oasMonthly: num('ret-oas-monthly'),
+    province: g('ret-province'),
+    life: num('ret-life'),
+    rateLow: num('ret-rate-low'),
+    rateMid: num('ret-rate-mid'),
+    rateHigh: num('ret-rate-high'),
+    inflation: num('ret-inflation')
+  };
+  saveState();
+  closeModal('retirement-inputs-modal');
+  refreshRetirement();
+  showToast('Retirement assumptions saved.');
+}
+
+// Simple Canadian marginal tax estimator — approximate combined fed+prov on taxable income
+function estimateCanadianTax(income, province) {
+  if (income <= 0) return 0;
+  // Federal brackets 2024
+  const fed = [
+    [55867, 0.15], [111733, 0.205], [173205, 0.26], [246752, 0.29], [Infinity, 0.33]
+  ];
+  // Provincial combined top marginal (simplified — flat estimate per province on taxable income)
+  const provRates = { ON: 0.1316, BC: 0.146, AB: 0.12, QC: 0.1575, MB: 0.174, SK: 0.115, NS: 0.1679, NB: 0.195, PE: 0.167, NL: 0.158 };
+  let fedTax = 0, remaining = income, lastBracket = 0;
+  for (const [limit, rate] of fed) {
+    const taxable = Math.min(limit, income) - lastBracket;
+    if (taxable > 0) fedTax += taxable * rate;
+    lastBracket = limit;
+    if (income <= limit) break;
+  }
+  const basicPersonal = 15705; // 2024 federal basic personal amount
+  fedTax = Math.max(0, fedTax - basicPersonal * 0.15);
+  const provTax = Math.max(0, (income - basicPersonal) * (provRates[province] || 0.15));
+  return Math.round(fedTax + provTax);
+}
+
+function projectRetirementNestEgg(r, rate) {
+  // Simple future value with monthly contributions — grows to retirement, then drawdown
+  const years = Math.max(0, r.retireAge - r.currentAge);
+  const rMonthly = rate / 100 / 12;
+  // FV with monthly contributions formula
+  function fv(pv, monthly, months, monthlyRate) {
+    if (months <= 0) return pv;
+    const pvPart = pv * Math.pow(1 + monthlyRate, months);
+    const contribPart = monthlyRate > 0 ? monthly * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) : monthly * months;
+    return pvPart + contribPart;
+  }
+  const months = years * 12;
+  const rrspFV = fv(r.rrsp, r.rrspMonthly, months, rMonthly);
+  const tfsaFV = fv(r.tfsa, r.tfsaMonthly, months, rMonthly);
+  const nonregFV = fv(r.nonreg, 0, months, rMonthly);
+  return { rrspFV, tfsaFV, nonregFV, total: rrspFV + tfsaFV + nonregFV };
+}
+
+// Yearly projection over the full life — for the chart
+function yearlyProjection(r, rate) {
+  const result = [];
+  const rMonthly = rate / 100 / 12;
+  let rrsp = r.rrsp, tfsa = r.tfsa, nonreg = r.nonreg;
+  for (let age = r.currentAge; age <= r.life; age++) {
+    // Growth + contributions during accumulation
+    if (age < r.retireAge) {
+      for (let m = 0; m < 12; m++) {
+        rrsp   = rrsp   * (1 + rMonthly) + r.rrspMonthly;
+        tfsa   = tfsa   * (1 + rMonthly) + r.tfsaMonthly;
+        nonreg = nonreg * (1 + rMonthly);
+      }
+    } else {
+      // Drawdown phase — withdraw from non-reg first, then RRSP, then TFSA
+      // Target: cover r.spend - (CPP + OAS + pension if applicable)
+      const cppAnnual = (age >= r.cppAge) ? (r.cppMonthly * 12) : 0;
+      const oasAnnual = (age >= 65) ? (r.oasMonthly * 12) : 0;
+      const pensionAnnual = r.pension;
+      const needGross = Math.max(0, r.spend * Math.pow(1 + r.inflation/100, age - r.currentAge) - cppAnnual - oasAnnual - pensionAnnual);
+      let need = needGross;
+      // Withdraw
+      const fromNonreg = Math.min(need, nonreg);
+      nonreg = Math.max(0, nonreg - fromNonreg);
+      need -= fromNonreg;
+      const fromRRSP = Math.min(need, rrsp);
+      rrsp = Math.max(0, rrsp - fromRRSP);
+      need -= fromRRSP;
+      const fromTFSA = Math.min(need, tfsa);
+      tfsa = Math.max(0, tfsa - fromTFSA);
+      // Grow remaining
+      rrsp = rrsp * (1 + rate/100);
+      tfsa = tfsa * (1 + rate/100);
+      nonreg = nonreg * (1 + rate/100);
+    }
+    result.push({ age, rrsp: Math.round(rrsp), tfsa: Math.round(tfsa), nonreg: Math.round(nonreg), total: Math.round(rrsp+tfsa+nonreg) });
+  }
+  return result;
+}
+
+function refreshRetirement() {
+  // Show setup notice if no inputs saved
+  if (!state.retirement) {
+    state.retirement = defaultRetirementInputs();
+    const notice = $('ret-setup-notice');
+    if (notice) notice.style.display = 'block';
+  } else {
+    const notice = $('ret-setup-notice');
+    if (notice) notice.style.display = 'none';
+  }
+  loadRetirementForm();
+  const r = state.retirement;
+
+  // Calculate for all three scenarios
+  const low  = yearlyProjection(r, r.rateLow);
+  const mid  = yearlyProjection(r, r.rateMid);
+  const high = yearlyProjection(r, r.rateHigh);
+
+  // KPIs — use realistic scenario at retirement age
+  const atRetire = mid.find(x => x.age === r.retireAge) || mid[mid.length - 1];
+  const nestEgg = atRetire ? atRetire.total : 0;
+
+  if ($('ret-nest-egg')) {
+    $('ret-nest-egg').textContent = fmt(nestEgg);
+    if ($('ret-nest-egg-sub')) $('ret-nest-egg-sub').textContent = 'at age ' + r.retireAge + ' · ' + r.rateMid + '% return';
+  }
+
+  // Income sources in year 1 of retirement
+  const cppAnnual = r.cppMonthly * 12;
+  const oasAnnual = r.oasMonthly * 12;
+  // Assume 4% safe withdrawal rate from nest egg
+  const portfolioIncome = nestEgg * 0.04;
+  const cppAtRetire = (r.retireAge >= r.cppAge) ? cppAnnual : 0;
+  const oasAtRetire = (r.retireAge >= 65) ? oasAnnual : 0;
+  const totalIncome = cppAtRetire + oasAtRetire + r.pension + portfolioIncome;
+  const afterTaxIncome = totalIncome - estimateCanadianTax(totalIncome, r.province);
+
+  if ($('ret-annual-income')) $('ret-annual-income').textContent = fmt(afterTaxIncome);
+  if ($('ret-replacement-ratio')) {
+    const ratio = r.spend > 0 ? (afterTaxIncome / r.spend * 100) : 0;
+    const color = ratio >= 100 ? 'var(--accent)' : (ratio >= 80 ? 'var(--accent3)' : 'var(--red)');
+    $('ret-replacement-ratio').innerHTML = '<span style="color:' + color + ';">' + ratio.toFixed(0) + '% of target spend</span>';
+  }
+  if ($('ret-cpp-oas')) {
+    $('ret-cpp-oas').textContent = fmt(cppAtRetire + oasAtRetire);
+    if ($('ret-cpp-oas-sub')) $('ret-cpp-oas-sub').textContent = fmt(cppAtRetire) + ' CPP + ' + fmt(oasAtRetire) + ' OAS';
+  }
+  if ($('ret-gap')) {
+    const monthlyGap = (r.spend - afterTaxIncome) / 12;
+    const gapColor = monthlyGap > 0 ? 'var(--red)' : 'var(--accent)';
+    $('ret-gap').style.color = gapColor;
+    $('ret-gap').textContent = (monthlyGap > 0 ? '-' : '+') + fmt(Math.abs(monthlyGap));
+    if ($('ret-gap-sub')) $('ret-gap-sub').textContent = monthlyGap > 0 ? 'monthly shortfall' : 'monthly surplus';
+  }
+
+  // Projection chart
+  renderRetirementChart(low, mid, high, r);
+  renderRetirementSources(cppAtRetire, oasAtRetire, r.pension, portfolioIncome);
+  renderRetirementSuccess(r);
+
+  // Text summary
+  const summary = $('ret-summary-text');
+  if (summary) {
+    const finalYear = mid[mid.length - 1];
+    const lastsTo = mid.slice().reverse().find(x => x.total > 0)?.age || r.life;
+    summary.innerHTML = `
+      At age <strong>${r.retireAge}</strong>, you'll have approximately <strong>${fmt(nestEgg)}</strong> in retirement savings using a realistic ${r.rateMid}% return.<br><br>
+      With CPP (${fmt(cppAnnual)}/yr) + OAS (${fmt(oasAnnual)}/yr) ${r.pension>0 ? `+ pension (${fmt(r.pension)}/yr) ` : ''}plus a 4% withdrawal from your portfolio, you can expect roughly <strong>${fmt(afterTaxIncome)}/year after tax</strong> in retirement income.<br><br>
+      ${afterTaxIncome >= r.spend
+        ? `✓ You're on track — projected income covers your target spending of ${fmt(r.spend)}/yr.`
+        : `⚠ Shortfall of ${fmt(r.spend - afterTaxIncome)}/yr. Consider increasing monthly contributions, delaying retirement, or reducing expected spending.`}
+      <br><br>
+      Based on the drawdown model, your portfolio ${finalYear.total > 0 ? `should last until age ${r.life}+ with ${fmt(finalYear.total)} remaining.` : `is projected to deplete around age ${lastsTo}.`}
+    `;
+  }
+}
+
+let chartRet, chartRetSources, chartRetSuccess;
+function renderRetirementChart(low, mid, high, r) {
+  const canvas = $('chart-retirement');
+  if (!canvas) return;
+  const labels = mid.map(x => x.age);
+  if (chartRet) chartRet.destroy();
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  chartRet = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Optimistic (' + r.rateHigh + '%)', data: high.map(x => x.total), borderColor: '#4af2b0', backgroundColor: 'rgba(74,242,176,0.1)', fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'Realistic (' + r.rateMid + '%)',    data: mid.map(x => x.total),  borderColor: '#c4f23a', backgroundColor: 'rgba(196,242,58,0.15)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+        { label: 'Conservative (' + r.rateLow + '%)', data: low.map(x => x.total),  borderColor: '#f2b848', backgroundColor: 'rgba(242,184,72,0.1)', fill: true, tension: 0.3, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Age', color: textColor }, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderRetirementSources(cpp, oas, pension, portfolio) {
+  const canvas = $('chart-ret-sources');
+  if (!canvas) return;
+  if (chartRetSources) chartRetSources.destroy();
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  chartRetSources = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['CPP', 'OAS', 'Pension', 'Portfolio (4% rule)'],
+      datasets: [{
+        data: [cpp, oas, pension, portfolio],
+        backgroundColor: ['#c4f23a','#4af2b0','#f2b848','#3ab5f2'], borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 }, padding: 8, boxWidth: 10 } } },
+      cutout: '60%'
+    }
+  });
+}
+
+function renderRetirementSuccess(r) {
+  const canvas = $('chart-ret-success');
+  if (!canvas) return;
+  // Calculate success % for each retirement age 55-70 (simple: does nest egg last to r.life at target spend?)
+  const ages = [55, 58, 60, 62, 65, 67, 70];
+  const success = ages.map(testAge => {
+    const modR = { ...r, retireAge: testAge };
+    const proj = yearlyProjection(modR, r.rateMid);
+    const finalYear = proj[proj.length - 1];
+    const lastsToEnd = finalYear.total > 0;
+    // Score: 0-100 based on how much is left / started with
+    const startedWith = r.rrsp + r.tfsa + r.nonreg;
+    const atRet = proj.find(x => x.age === testAge)?.total || 0;
+    if (atRet === 0) return 0;
+    return Math.max(0, Math.min(100, lastsToEnd ? 80 + Math.min(20, finalYear.total / atRet * 100) : (proj.findIndex(x => x.total === 0) / proj.length * 100)));
+  });
+  if (chartRetSuccess) chartRetSuccess.destroy();
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  chartRetSuccess = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ages.map(a => 'Age ' + a),
+      datasets: [{
+        label: 'Success %',
+        data: success,
+        backgroundColor: success.map(s => s >= 80 ? 'rgba(196,242,58,0.7)' : s >= 50 ? 'rgba(242,184,72,0.7)' : 'rgba(242,90,58,0.7)'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+        y: { min: 0, max: 100, ticks: { color: textColor, callback: v => v + '%' }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════
+// NET WORTH HISTORY
+// ═══════════════════════════════════
+
+function refreshNetWorthHistory() {
+  const snaps = (state.nwSnapshots || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+  // Pre-fill today's date for manual snapshot modal
+  const snapDateEl = $('nw-snap-date');
+  if (snapDateEl && !snapDateEl.value) snapDateEl.value = today();
+
+  // KPIs
+  if (snaps.length === 0) {
+    if ($('nw-current')) $('nw-current').textContent = '$0';
+    if ($('nw-yoy')) $('nw-yoy').textContent = '—';
+    if ($('nw-best')) $('nw-best').textContent = '—';
+    if ($('nw-count')) $('nw-count').textContent = '0';
+    if ($('nw-range')) $('nw-range').textContent = 'add your first snapshot';
+    $('nw-snapshots-body').innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:40px;"><div class="empty-icon">📊</div><div class="empty-text" style="margin-bottom:12px;">No snapshots yet.</div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Paste your spreadsheet data, or add your first snapshot manually.</div></div></td></tr>`;
+    renderNWHistoryCharts([]);
+    return;
+  }
+
+  const latest = snaps[snaps.length - 1];
+  const currentNW = latest.assets - latest.liabilities;
+  if ($('nw-current')) $('nw-current').textContent = fmt(currentNW);
+  if ($('nw-current-sub')) $('nw-current-sub').textContent = 'as of ' + latest.date;
+
+  // YoY — find snapshot ~365 days before latest
+  const targetDate = new Date(latest.date); targetDate.setFullYear(targetDate.getFullYear() - 1);
+  let yoyBase = null, minDiff = Infinity;
+  snaps.forEach(s => {
+    const diff = Math.abs(new Date(s.date) - targetDate);
+    if (diff < minDiff && diff < 90 * 86400000) { minDiff = diff; yoyBase = s; }
+  });
+  if ($('nw-yoy')) {
+    if (yoyBase) {
+      const baseNW = yoyBase.assets - yoyBase.liabilities;
+      const change = currentNW - baseNW;
+      const sign = change >= 0 ? '+' : '-';
+      const color = change >= 0 ? 'var(--accent)' : 'var(--red)';
+      $('nw-yoy').innerHTML = `<span style="color:${color};">${sign}${fmt(Math.abs(change))}</span>`;
+      if ($('nw-yoy-sub')) $('nw-yoy-sub').textContent = 'vs ' + yoyBase.date + ' (' + fmt(baseNW) + ')';
+    } else {
+      $('nw-yoy').textContent = '—';
+      if ($('nw-yoy-sub')) $('nw-yoy-sub').textContent = 'need 1+ year of data';
+    }
+  }
+
+  // Best month = biggest positive snapshot-to-snapshot change
+  if ($('nw-best')) {
+    let bestChange = 0, bestSnap = null;
+    for (let i = 1; i < snaps.length; i++) {
+      const prev = snaps[i-1].assets - snaps[i-1].liabilities;
+      const cur  = snaps[i].assets - snaps[i].liabilities;
+      if (cur - prev > bestChange) { bestChange = cur - prev; bestSnap = snaps[i]; }
+    }
+    if (bestSnap) {
+      $('nw-best').textContent = '+' + fmt(bestChange);
+      if ($('nw-best-sub')) $('nw-best-sub').textContent = bestSnap.date;
+    } else {
+      $('nw-best').textContent = '—';
+    }
+  }
+
+  if ($('nw-count')) $('nw-count').textContent = String(snaps.length);
+  if ($('nw-range')) $('nw-range').textContent = snaps[0].date + ' → ' + latest.date;
+
+  // Snapshot table
+  const body = $('nw-snapshots-body');
+  if (body) {
+    body.innerHTML = snaps.slice().reverse().map((s, i, rev) => {
+      const nw = s.assets - s.liabilities;
+      const origIdx = snaps.length - 1 - i;
+      const prevNW = origIdx > 0 ? (snaps[origIdx-1].assets - snaps[origIdx-1].liabilities) : null;
+      const delta = prevNW !== null ? nw - prevNW : null;
+      return `<tr>
+        <td><span class="highlight-val">${s.date}</span></td>
+        <td style="font-family:var(--mono);">${fmt(s.assets)}</td>
+        <td style="font-family:var(--mono);color:var(--red);">${fmt(s.liabilities)}</td>
+        <td style="font-family:var(--mono);font-weight:500;color:${nw>=0?'var(--accent)':'var(--red)'};">${nw>=0?'':'-'}${fmt(nw)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:${delta === null ? 'var(--muted)' : (delta >= 0 ? 'var(--accent)' : 'var(--red)')};">${delta === null ? '—' : (delta>=0?'+':'-')+fmt(Math.abs(delta))}</td>
+        <td><button class="btn btn-danger" onclick="deleteNWSnapshot('${s.date}')">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  renderNWHistoryCharts(snaps);
+}
+
+let chartNW, chartNWComp;
+function renderNWHistoryCharts(snaps) {
+  if (snaps.length === 0) return;
+  const labels = snaps.map(s => s.date);
+  const assets = snaps.map(s => s.assets);
+  const liabs  = snaps.map(s => -s.liabilities); // negative for visual
+  const nw     = snaps.map(s => s.assets - s.liabilities);
+
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#c0c8c0';
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+
+  if (chartNW) chartNW.destroy();
+  const nwCanvas = $('chart-nw-history');
+  if (nwCanvas) {
+    chartNW = new Chart(nwCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Assets', data: assets, borderColor: '#c4f23a', backgroundColor: 'rgba(196,242,58,0.2)', fill: true, tension: 0.3, pointRadius: 3 },
+          { label: 'Liabilities', data: snaps.map(s => s.liabilities), borderColor: '#f25a3a', backgroundColor: 'rgba(242,90,58,0.15)', fill: true, tension: 0.3, pointRadius: 3 },
+          { label: 'Net Worth', data: nw, borderColor: '#4af2b0', backgroundColor: 'transparent', borderWidth: 3, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#4af2b0' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
+        scales: {
+          x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
+          y: { ticks: { color: textColor, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: gridColor } }
+        }
+      }
+    });
+  }
+
+  // Composition chart — assets positive, liabilities negative, stacked bar
+  if (chartNWComp) chartNWComp.destroy();
+  const compCanvas = $('chart-nw-composition');
+  if (compCanvas) {
+    chartNWComp = new Chart(compCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Assets', data: assets, backgroundColor: 'rgba(196,242,58,0.7)', borderRadius: 2 },
+          { label: 'Liabilities', data: liabs, backgroundColor: 'rgba(242,90,58,0.7)', borderRadius: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
+        scales: {
+          x: { stacked: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
+          y: { stacked: true, ticks: { color: textColor, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: gridColor } }
+        }
+      }
+    });
+  }
+}
+
+function saveNWSnapshot() {
+  const date = $('nw-snap-date').value;
+  const assets = parseFloat($('nw-snap-assets').value) || 0;
+  const liabilities = parseFloat($('nw-snap-liabilities').value) || 0;
+  const notes = $('nw-snap-notes').value;
+  if (!date) { showToast('Please enter a date.'); return; }
+  if (!state.nwSnapshots) state.nwSnapshots = [];
+  // Replace if date exists
+  const existing = state.nwSnapshots.findIndex(s => s.date === date);
+  const snap = { date, assets, liabilities, notes };
+  if (existing >= 0) state.nwSnapshots[existing] = snap;
+  else state.nwSnapshots.push(snap);
+  saveState();
+  closeModal('nw-snapshot-modal');
+  $('nw-snap-assets').value = '';
+  $('nw-snap-liabilities').value = '';
+  $('nw-snap-notes').value = '';
+  refreshNetWorthHistory();
+  showToast('Snapshot saved: ' + date);
+}
+
+function deleteNWSnapshot(date) {
+  if (!confirm('Delete snapshot from ' + date + '?')) return;
+  state.nwSnapshots = (state.nwSnapshots || []).filter(s => s.date !== date);
+  saveState();
+  refreshNetWorthHistory();
+}
+
+// ─── Paste-from-sheet parser ──────────────────────────────────────────────
+let _nwParsedPreview = null;
+
+function parseNWPaste() {
+  const raw = $('nw-paste-area').value;
+  if (!raw.trim()) { showToast('Paste your sheet data first.'); return; }
+  const parsed = parseNWSheetData(raw);
+  if (parsed.length === 0) {
+    showToast('Could not detect any date/amount pairs. Check the format.');
+    return;
+  }
+  _nwParsedPreview = parsed;
+  const preview = $('nw-paste-preview');
+  const content = $('nw-paste-preview-content');
+  if (preview && content) {
+    preview.style.display = 'block';
+    $('nw-paste-footer').style.display = 'none';
+    content.innerHTML = `<div style="font-family:var(--mono);font-size:11px;margin-bottom:10px;color:var(--accent);">Found ${parsed.length} snapshots</div>
+      <table class="tx-table"><thead><tr><th>Date</th><th>Assets</th><th>Liabilities</th><th>Net Worth</th></tr></thead><tbody>` +
+      parsed.map(s => {
+        const nw = s.assets - s.liabilities;
+        return `<tr><td><span class="highlight-val">${s.date}</span></td><td style="font-family:var(--mono);">${fmt(s.assets)}</td><td style="font-family:var(--mono);color:var(--red);">${fmt(s.liabilities)}</td><td style="font-family:var(--mono);color:${nw>=0?'var(--accent)':'var(--red)'};">${nw>=0?'':'-'}${fmt(nw)}</td></tr>`;
+      }).join('') + '</tbody></table>';
+  }
+}
+
+function parseNWSheetData(raw) {
+  const lines = raw.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // Detect separator
+  const sep = lines[0].includes('\t') ? '\t' : (lines[0].split(',').length > lines[0].split('\t').length ? ',' : '\t');
+  const cells = lines.map(l => l.split(sep).map(c => c.trim()));
+
+  // Extract dollar amount — handles "$(4.90)", "-$4.90", "$4,018.92", " - "
+  function parseAmt(s) {
+    if (!s) return 0;
+    s = s.trim();
+    if (s === '' || s === '-' || s === '—') return 0;
+    const neg = /^\(.*\)$/.test(s) || /^-/.test(s);
+    const num = parseFloat(s.replace(/[\$,()\s]/g, '').replace(/^-/, ''));
+    if (isNaN(num)) return 0;
+    return neg ? -num : num;
+  }
+
+  // Detect transposed (dates as column headers) vs standard (dates as first column)
+  const firstRow = cells[0];
+  // Scan first row skipping col 0 — if most are date-like, we're transposed
+  const dateLike = /(\w{3,}\.?\s+\d+,?\s+\d{4}|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})/i;
+  const headerDateCount = firstRow.slice(1).filter(c => dateLike.test(c)).length;
+  const isTransposed = headerDateCount >= 2;
+
+  if (isTransposed) {
+    // Transposed: column 0 = line item name, cols 1+ = dates
+    // We detect Debt vs Asset sections by scanning rows for "Debt"/"Assets"/"Net Worth" markers or by sign
+    const dates = firstRow.slice(1).map(parseSheetDate).filter(Boolean);
+    if (dates.length === 0) return [];
+
+    // Walk rows; track which section we're in. User's sample has:
+    //   "Debt" / ...items... / "Total Debt" / ...
+    //   "Assets" / ...items... / "Total" / ...
+    //   "Net Worth" / ...
+    let section = null;  // 'debt' | 'assets' | 'nw' | null
+    const colCount = firstRow.length - 1;
+    const debtByCol   = Array(colCount).fill(0);
+    const assetByCol  = Array(colCount).fill(0);
+    const nwByCol     = Array(colCount).fill(null); // if we find an explicit net worth row
+    const totalDebtByCol  = Array(colCount).fill(null);
+    const totalAssetByCol = Array(colCount).fill(null);
+
+    cells.slice(1).forEach(row => {
+      const label = (row[0] || '').trim().toLowerCase();
+      if (!label) return;
+      // Section headers
+      if (label === 'debt' || label === 'debts' || label === 'liabilities') { section = 'debt'; return; }
+      if (label === 'assets' || label === 'asset') { section = 'assets'; return; }
+      if (label.startsWith('net worth')) { section = 'nw'; return; }
+      // Totals — capture explicitly
+      if (label.startsWith('total debt')) {
+        row.slice(1, colCount + 1).forEach((c, i) => { const v = parseAmt(c); if (v) totalDebtByCol[i] = v; });
+        return;
+      }
+      if (label === 'total' && section === 'assets') {
+        row.slice(1, colCount + 1).forEach((c, i) => { const v = parseAmt(c); if (v) totalAssetByCol[i] = v; });
+        return;
+      }
+      if (section === 'nw' && (label === 'net worth' || label.startsWith('net worth'))) {
+        row.slice(1, colCount + 1).forEach((c, i) => { nwByCol[i] = parseAmt(c); });
+        return;
+      }
+      // Skip "Difference" and "Difference since" rows
+      if (label.startsWith('difference')) return;
+      // Line items — sum
+      row.slice(1, colCount + 1).forEach((c, i) => {
+        const v = parseAmt(c);
+        if (!v) return;
+        if (section === 'debt') debtByCol[i] += v;
+        else if (section === 'assets') assetByCol[i] += v;
+      });
+    });
+
+    // Use totals if we captured them, else use summed line items
+    const results = [];
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      if (!date) continue;
+      const debt = totalDebtByCol[i] !== null ? totalDebtByCol[i] : debtByCol[i];
+      const assets = totalAssetByCol[i] !== null ? totalAssetByCol[i] : assetByCol[i];
+      // Only push if we have meaningful data
+      if (debt === 0 && assets === 0 && nwByCol[i] === null) continue;
+      results.push({ date, assets: assets, liabilities: debt, notes: '' });
+    }
+    return results;
+  }
+
+  // Standard layout — each row is a date
+  // Find column indices for Date, Assets, Liabilities
+  const headers = firstRow.map(h => h.toLowerCase());
+  const dateIdx  = headers.findIndex(h => /date|month|period/.test(h));
+  const assetIdx = headers.findIndex(h => /^asset|total asset|net asset/.test(h));
+  const liabIdx  = headers.findIndex(h => /^liab|debt|total liab|total debt/.test(h));
+  if (dateIdx < 0) return [];
+  const results = [];
+  cells.slice(1).forEach(row => {
+    const date = parseSheetDate(row[dateIdx]);
+    if (!date) return;
+    const assets = assetIdx >= 0 ? parseAmt(row[assetIdx]) : 0;
+    const liabs  = liabIdx >= 0  ? parseAmt(row[liabIdx])  : 0;
+    if (assets || liabs) results.push({ date, assets, liabilities: liabs, notes: '' });
+  });
+  return results;
+}
+
+function parseSheetDate(s) {
+  if (!s) return null;
+  s = s.trim();
+  // Try native parse first
+  let d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const pad = n => String(n).padStart(2,'0');
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+  // Try "Month D, YYYY" e.g. "March 16, 2020"
+  const m = s.match(/([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})/);
+  if (m) {
+    const months = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,sept:9};
+    const mm = months[m[1].toLowerCase()];
+    if (mm) {
+      const pad = n => String(n).padStart(2,'0');
+      return m[3] + '-' + pad(mm) + '-' + pad(parseInt(m[2]));
+    }
+  }
+  return null;
+}
+
+function confirmNWImport() {
+  if (!_nwParsedPreview || _nwParsedPreview.length === 0) return;
+  if (!state.nwSnapshots) state.nwSnapshots = [];
+  let imported = 0, replaced = 0;
+  _nwParsedPreview.forEach(s => {
+    const idx = state.nwSnapshots.findIndex(x => x.date === s.date);
+    if (idx >= 0) { state.nwSnapshots[idx] = s; replaced++; }
+    else { state.nwSnapshots.push(s); imported++; }
+  });
+  saveState();
+  $('nw-paste-area').value = '';
+  $('nw-paste-preview').style.display = 'none';
+  $('nw-paste-footer').style.display = 'flex';
+  closeModal('nw-paste-modal');
+  refreshNetWorthHistory();
+  showToast(imported + ' snapshots imported' + (replaced > 0 ? ' · ' + replaced + ' updated' : ''));
 }
 
 // ═══════════════════════════════════
@@ -4504,15 +5797,218 @@ function handleDrop(e) {
 
 // Handle one or many files
 function handleFileList(files) {
-  const csvFiles = [...files].filter(f => /\.(csv|ofx|qfx)$/i.test(f.name));
-  if (csvFiles.length === 0) { showToast('Please upload CSV files.'); return; }
-  if (csvFiles.length === 1) {
-    // Single file: use the existing preview flow
-    handleCSVFile(csvFiles[0]);
-  } else {
-    // Multiple files: silent batch import — no preview
-    importMultipleCSVFiles(csvFiles);
+  const allFiles = [...files].filter(f => /\.(csv|ofx|qfx|pdf)$/i.test(f.name));
+  if (allFiles.length === 0) { showToast('Please upload a CSV, OFX, QFX, or PDF file.'); return; }
+
+  // Split into PDFs (parse first, then combine into CSV flow) and non-PDFs
+  const pdfs = allFiles.filter(f => /\.pdf$/i.test(f.name));
+  const nonPdfs = allFiles.filter(f => !/\.pdf$/i.test(f.name));
+
+  if (pdfs.length > 0 && nonPdfs.length === 0) {
+    // PDF-only: parse and show preview
+    if (pdfs.length === 1) {
+      handlePDFFile(pdfs[0]);
+    } else {
+      importMultiplePDFFiles(pdfs);
+    }
+    return;
   }
+
+  if (pdfs.length > 0 && nonPdfs.length > 0) {
+    showToast('Please upload PDF files separately from CSV/OFX files.');
+    return;
+  }
+
+  // No PDFs: existing CSV/OFX flow
+  if (nonPdfs.length === 1) {
+    handleCSVFile(nonPdfs[0]);
+  } else {
+    importMultipleCSVFiles(nonPdfs);
+  }
+}
+
+// ═══════════════════════════════════
+// PDF STATEMENT PARSER (100% client-side — PDF never leaves the browser)
+// Mirrors the logic of the TD Bank Python converter:
+//   "MAR 17 MAR 20 SOME MERCHANT CITY $12.34"
+//   "MAR 9  MAR 13 CIBC TORONTO -$3,661.30"
+// After parsing, only date/desc/amount are retained. The PDF binary is released.
+// ═══════════════════════════════════
+
+const PDF_MONTHS = {JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+const PDF_MONTH_NAMES = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+
+// Transaction line regex — tx date, posting date, description, amount
+const PDF_TX_RE = /^([A-Z]{3})\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{1,2})\s+(.+?)\s+(-?)\$([\d,]+\.\d{2})\s*$/;
+const PDF_STMT_DATE_RE = /STATEMENT\s+DATE[:\s]+([A-Za-z]+)\s*\d{1,2}[,\s]+(\d{4})/i;
+const PDF_YEAR_RE = /\b(20\d{2})\b/;
+const PDF_SKIP_RE = /^(TRANSACTION\s+POSTING|DATE\s+DATE|ACTIVITY\s*DESCRIPTION|Continued|\d+\s+OF\s+\d+|Page\s+\d+|\s*\.\s*$)/i;
+
+function extractStmtDate(text) {
+  const m = text.match(PDF_STMT_DATE_RE);
+  if (m) {
+    const month = PDF_MONTH_NAMES[m[1].toLowerCase()];
+    return { month: month || null, year: parseInt(m[2]) };
+  }
+  const yM = text.match(PDF_YEAR_RE);
+  return { month: null, year: yM ? parseInt(yM[1]) : new Date().getFullYear() };
+}
+
+function pdfMakeDate(monthAbbr, day, stmtMonth, stmtYear) {
+  const m = PDF_MONTHS[monthAbbr.toUpperCase()] || 1;
+  let year = stmtYear;
+  // January/February statement with Nov/Dec transactions = previous year
+  if (stmtMonth !== null && stmtMonth <= 2 && m >= 11) year = stmtYear - 1;
+  const pad = n => String(n).padStart(2,'0');
+  return `${year}-${pad(m)}-${pad(parseInt(day))}`;
+}
+
+async function parsePDFStatement(file) {
+  if (!window.pdfjsLib) throw new Error('PDF support not loaded — refresh the page.');
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  // Extract all text
+  let fullText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    // Reconstruct lines: group items by y-position, sort by x within each y
+    const lines = {};
+    content.items.forEach(it => {
+      const y = Math.round(it.transform[5]);
+      if (!lines[y]) lines[y] = [];
+      lines[y].push({ x: it.transform[4], str: it.str });
+    });
+    const ys = Object.keys(lines).map(Number).sort((a,b) => b - a);
+    ys.forEach(y => {
+      const line = lines[y].sort((a,b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+      if (line) fullText += line + '\n';
+    });
+  }
+
+  // Extract statement date for year rollover
+  const { month: stmtMonth, year: stmtYear } = extractStmtDate(fullText.slice(0, 2000));
+
+  // Parse transactions
+  const lines = fullText.split('\n');
+  const results = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || PDF_SKIP_RE.test(line)) continue;
+
+    let m = line.match(PDF_TX_RE);
+
+    // TD wraps long merchant names — try combining with next line
+    if (!m && i + 1 < lines.length) {
+      const combined = line + ' ' + lines[i+1].trim();
+      m = combined.match(PDF_TX_RE);
+      if (m) i++; // consume continuation line
+    }
+
+    if (!m) continue;
+
+    const date = pdfMakeDate(m[1], m[2], stmtMonth, stmtYear);
+    const desc = m[5].trim();
+    const sign = m[6];
+    const rawAmount = parseFloat(m[7].replace(/,/g, ''));
+    if (isNaN(rawAmount)) continue;
+    const signedAmount = sign === '-' ? -rawAmount : rawAmount;
+
+    // Positive = purchase/expense (debit). Negative = payment/credit coming in.
+    const hint = signedAmount < 0 ? 'transfer' : 'expense';
+    results.push({ date, desc, rawAmt: String(signedAmount < 0 ? -signedAmount : -signedAmount), hint });
+    // Note: for CC PDFs, positive dollar = expense (stored as negative internally via hint)
+    //       negative dollar = incoming payment (stored as transfer)
+    // But importCSV uses Math.abs(rawAmt) so we need the sign right:
+    //   rawAmt sign: negative → expense, positive → income/transfer
+    results[results.length - 1].rawAmt = String(sign === '-' ? rawAmount : -rawAmount);
+  }
+
+  return results;
+}
+
+async function handlePDFFile(file) {
+  const status = $('pdf-import-status');
+  if (status) status.textContent = 'Parsing ' + file.name + '…';
+  try {
+    const parsed = await parsePDFStatement(file);
+    if (parsed.length === 0) {
+      showToast('No transactions found in ' + file.name + '. Try a CSV export instead.');
+      return;
+    }
+    // Route through same preview as OFX
+    const ofxLikeProfile = {
+      name: 'TD Aeroplan Visa',  // default — user can override
+      icon: '📄',
+      accountType: 'Credit Card',
+      parseRaw: () => parsed,
+      parse: () => []
+    };
+    detectedProfile = ofxLikeProfile;
+    window._ofxParsed = parsed;
+    showDetectBanner({ icon: '📄', name: 'PDF Statement (' + parsed.length + ' transactions)' });
+    const ov = $('import-account-override');
+    if (ov) ov.value = 'TD Aeroplan Visa';
+    $('csv-preview').style.display = 'block';
+    const colMap = $('col-mapper');
+    if (colMap) colMap.style.display = 'none';
+    $('csv-preview-table').innerHTML =
+      '<thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th></tr></thead><tbody>' +
+      parsed.slice(0,5).map(p => {
+        const amt = parseFloat(p.rawAmt);
+        const col = amt < 0 ? 'var(--red)' : 'var(--accent)';
+        return '<tr><td><span class="highlight-val">' + p.date + '</span></td>' +
+          '<td style="font-size:12px;">' + p.desc.slice(0,55) + '</td>' +
+          '<td style="font-family:var(--mono);color:' + col + ';">' + (amt>=0?'+':'') + fmt(Math.abs(amt)) + '</td>' +
+          '<td style="font-family:var(--mono);font-size:10px;color:var(--muted);">' + (p.hint||'auto') + '</td></tr>';
+      }).join('') + '</tbody>';
+    showToast('PDF parsed — ' + parsed.length + ' transactions extracted. Review and confirm to import.');
+  } catch (e) {
+    console.error('PDF parse error:', e);
+    showToast('Could not parse PDF: ' + e.message);
+  }
+}
+
+async function importMultiplePDFFiles(files) {
+  const existingKeys = new Set(state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount)));
+  const overrideEl = $('import-account-override');
+  const accountName = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : 'TD Aeroplan Visa';
+  let imported = 0, skipped = 0, fileCount = 0;
+
+  for (const file of files) {
+    try {
+      const parsed = await parsePDFStatement(file);
+      fileCount++;
+      parsed.forEach(item => {
+        const rawAmt = parseFloat(item.rawAmt);
+        if (isNaN(rawAmt)) return;
+        const amount = Math.abs(rawAmt);
+        const date = item.date;
+        const type = item.hint === 'transfer' ? 'transfer' : (rawAmt < 0 ? 'expense' : 'income');
+        const key = makeDupeKey(date, item.desc, amount);
+        if (existingKeys.has(key)) { skipped++; return; }
+        existingKeys.add(key);
+        state.transactions.push({
+          id: nextId(),
+          date, desc: item.desc, amount, type,
+          category: type === 'transfer' ? 'Credit Card Payment' : guessCategory(item.desc),
+          account: accountName,
+          contact: null,
+        });
+        imported++;
+      });
+    } catch (e) {
+      console.error('PDF error:', file.name, e);
+    }
+  }
+
+  saveState();
+  reconcileTransfers();
+  refreshDashboard();
+  refreshTransactions();
+  showToast(imported + ' imported from ' + fileCount + ' PDF' + (fileCount!==1?'s':'') + (skipped>0 ? ' · ' + skipped + ' duplicates skipped' : ''));
 }
 
 function parseCSVLine(line) {
@@ -6388,6 +7884,20 @@ function loadState() {
       if (!state.contactRules) state.contactRules = {};
       if (state._onboarded === undefined) state._onboarded = false;
       if (!state._migrations) state._migrations = {};
+      if (!state.theme) state.theme = 'dark';
+      if (!state.nwSnapshots) state.nwSnapshots = [];
+      if (!state.retirement) state.retirement = null;
+      if (!state.dashWidgets || !state.dashWidgets.length) {
+        state.dashWidgets = [
+          { id: 'kpis',           enabled: true,  label: 'Main KPIs' },
+          { id: 'extra-kpis',     enabled: false, label: 'Extra KPIs' },
+          { id: 'charts',         enabled: true,  label: 'Charts' },
+          { id: 'spending-pulse', enabled: true,  label: 'Spending Pulse' },
+          { id: 'calendar',       enabled: true,  label: 'Calendar' },
+          { id: 'bills',          enabled: true,  label: 'Recurring bills' },
+          { id: 'recent-tx',      enabled: true,  label: 'Recent transactions' },
+        ];
+      }
       return true;
     }
   } catch(e) {
@@ -6519,6 +8029,7 @@ $('tx-date').value = today();
 calInit();
 
 const hadSavedData = loadState();
+applyTheme();
 
 // Only seed demo data on very first load (no saved data found)
 if (!hadSavedData) {
