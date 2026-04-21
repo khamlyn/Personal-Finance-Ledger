@@ -3802,12 +3802,15 @@ const RECURRING_PATTERNS = [
 function normDesc(desc) {
   // Extract merchant core — strip noise that varies per-transaction
   return (desc || '')
-    .replace(/\s*#\d+/g, '')              // store numbers: Tim Hortons #1234
-    .replace(/\*[A-Z0-9]{4,}/g, '')       // card ref codes: AMZN*AB1CD234
-    .replace(/\d{4,}/g, '')           // standalone long numbers
-    .replace(/\$[\d,.]+/g, '')            // dollar amounts
-    .replace(/(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|CA|US)/gi, '') // province/country codes
-    .replace(/[-_*#\/\\]/g, ' ')
+    .replace(/\s+www\.[a-z0-9.-]+/gi, '')      // trailing URLs: " www.amazon.c"
+    .replace(/\s+https?:\/\/\S+/gi, '')        // full URLs
+    .replace(/\s*#\d+/g, '')                    // store numbers
+    .replace(/\*[A-Z0-9]{4,}/gi, '')             // card ref codes: AMZN*AB1CD234
+    .replace(/\b[A-Z0-9]{7,}\b/g, '')           // long alphanumeric ref codes: BBOGN5VY1
+    .replace(/\d{4,}/g, '')                      // standalone long numbers
+    .replace(/\$[\d,.]+/g, '')                  // dollar amounts
+    .replace(/\b(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|CA|US)\b/gi, '') // province codes
+    .replace(/[-_*#\/\\.]/g, ' ')              // punctuation incl dots
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
@@ -3880,9 +3883,24 @@ function detectRecurringBills() {
 
   const freqSuggestions = [];
   Object.entries(groups).forEach(([key, txs]) => {
-    if (txs.length < 2) return;
+    // Require at least 3 total occurrences (was 2)
+    if (txs.length < 3) return;
+    // Require at least 3 distinct months (was 2) — catches true monthly bills, not accidental repeats
     const months = new Set(txs.map(t => t.date.slice(0, 7)));
-    if (months.size < 2) return;
+    if (months.size < 3) return;
+
+    // Skip common categories that are usually NOT recurring bills
+    const cats = txs.map(t => (t.category || '').toLowerCase());
+    const likelyNotBill = cats.some(c =>
+      c === 'food & dining' || c === 'groceries' || c === 'shopping' ||
+      c === 'transport' || c === 'coffee' || c === 'gas' || c === 'travel'
+    );
+    // If the majority of matches are in a non-bill category, skip
+    const nonBillCount = cats.filter(c =>
+      c === 'food & dining' || c === 'groceries' || c === 'shopping' ||
+      c === 'transport' || c === 'coffee' || c === 'gas' || c === 'travel'
+    ).length;
+    if (nonBillCount / txs.length > 0.5) return;
 
     // Skip if already covered by a pattern suggestion
     const alreadyCovered = patternSuggestions.some(s =>
@@ -3900,24 +3918,30 @@ function detectRecurringBills() {
     const medianAmt = amounts[Math.floor(amounts.length / 2)];
     const variance = Math.max(...amounts) - Math.min(...amounts);
 
-    // Only suggest if amount is reasonably consistent (variance < 50% of median)
-    if (medianAmt > 0 && variance / medianAmt > 0.5) return;
-    if (medianAmt < 15) return;
+    // Tight amount stability — variance must be under 25% of median (was 50%)
+    if (medianAmt > 0 && variance / medianAmt > 0.25) return;
+    // Minimum amount $20 (was $15) — filters more small coffee/food purchases
+    if (medianAmt < 20) return;
 
     // ── Determine frequency from intervals between dates ──────────────────
     const sortedDates = [...txs].sort((a,b) => a.date.localeCompare(b.date));
     let detectedFreq = 'monthly';
-    if (sortedDates.length >= 3) {
-      const intervals = [];
-      for (let i = 1; i < sortedDates.length; i++) {
-        const ms = new Date(sortedDates[i].date) - new Date(sortedDates[i-1].date);
-        intervals.push(Math.round(ms / 86400000)); // days
-      }
-      const medInterval = intervals.sort((a,b)=>a-b)[Math.floor(intervals.length/2)];
-      if (medInterval >= 10 && medInterval <= 18) detectedFreq = 'biweekly';
-      else if (medInterval >= 25 && medInterval <= 35) detectedFreq = 'monthly';
-      else if (medInterval < 10 || medInterval > 35) return; // too erratic
+    const intervals = [];
+    for (let i = 1; i < sortedDates.length; i++) {
+      const ms = new Date(sortedDates[i].date) - new Date(sortedDates[i-1].date);
+      intervals.push(Math.round(ms / 86400000)); // days
     }
+    const medInterval = intervals.sort((a,b)=>a-b)[Math.floor(intervals.length/2)];
+    // Require intervals themselves to be consistent — stddev under 40% of median
+    const meanInt = intervals.reduce((s,v) => s+v, 0) / intervals.length;
+    const stddev = Math.sqrt(intervals.reduce((s,v) => s + (v-meanInt)*(v-meanInt), 0) / intervals.length);
+    if (meanInt > 0 && stddev / meanInt > 0.4) return;  // too erratic
+
+    if (medInterval >= 10 && medInterval <= 18) detectedFreq = 'biweekly';
+    else if (medInterval >= 25 && medInterval <= 35) detectedFreq = 'monthly';
+    else if (medInterval >= 85 && medInterval <= 100) detectedFreq = 'quarterly';
+    else if (medInterval >= 350 && medInterval <= 380) detectedFreq = 'yearly';
+    else return; // unusual interval — skip
 
     const days = txs.map(t => parseInt(t.date.slice(8)));
     const medianDay = [...days].sort((a,b)=>a-b)[Math.floor(days.length/2)];
@@ -4790,17 +4814,23 @@ function renderNWHistoryCharts(snaps) {
       data: {
         labels,
         datasets: [
-          { label: 'Assets', data: assets, borderColor: '#c4f23a', backgroundColor: 'rgba(196,242,58,0.2)', fill: true, tension: 0.3, pointRadius: 3 },
-          { label: 'Liabilities', data: snaps.map(s => s.liabilities), borderColor: '#f25a3a', backgroundColor: 'rgba(242,90,58,0.15)', fill: true, tension: 0.3, pointRadius: 3 },
-          { label: 'Net Worth', data: nw, borderColor: '#4af2b0', backgroundColor: 'transparent', borderWidth: 3, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#4af2b0' }
+          { label: 'Assets',      data: assets, borderColor: '#c4f23a', backgroundColor: 'rgba(196,242,58,0.2)', fill: 'origin', tension: 0.3, pointRadius: 3 },
+          { label: 'Liabilities', data: liabs,  borderColor: '#f25a3a', backgroundColor: 'rgba(242,90,58,0.18)', fill: 'origin', tension: 0.3, pointRadius: 3 },
+          { label: 'Net Worth',   data: nw,     borderColor: '#4af2b0', backgroundColor: 'transparent', borderWidth: 3, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#4af2b0' }
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
+        plugins: {
+          legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } },
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y < 0 ? '-' : '') + fmt(Math.abs(ctx.parsed.y)) } }
+        },
         scales: {
           x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
-          y: { ticks: { color: textColor, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: gridColor } }
+          y: {
+            ticks: { color: textColor, callback: v => (v < 0 ? '-' : '') + '$' + (Math.abs(v)/1000).toFixed(0) + 'k' },
+            grid: { color: gridColor }
+          }
         }
       }
     });
