@@ -2394,6 +2394,17 @@
 </div>
 
 <!-- Split Transaction Modal -->
+<!-- Transaction Details Modal -->
+<div class="modal-overlay" id="tx-details-modal">
+  <div class="modal" style="max-width:620px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-title" id="tx-details-title">Transaction Details</div>
+    <div id="tx-details-body"></div>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('tx-details-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="split-tx-modal">
   <div class="modal" style="max-width:480px;">
     <div class="modal-title">Split Transaction</div>
@@ -2747,7 +2758,9 @@
   <div id="ctx-panel-type" style="display:none;padding:4px 0;"></div>
   <!-- More panel -->
   <div id="ctx-panel-more" style="display:none;padding:4px 0;">
-    <div class="ctx-item" onclick="ctxSplitTx()"  style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">⌥ Split Transaction…</div>
+    <div class="ctx-item" onclick="ctxShowDetails()" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">ⓘ View Details…</div>
+    <div class="ctx-item" onclick="ctxEditNote()"    style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✎ Edit Note…</div>
+    <div class="ctx-item" onclick="ctxSplitTx()"     style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">⌥ Split Transaction…</div>
     <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
   </div>
 </div>
@@ -3072,6 +3085,152 @@ function closeCtxMenu() {
 
 // ─── Split Transaction ────────────────────────────────────────────────────
 let _splitTxId = null;
+
+function ctxShowDetails() {
+  const id = ctxTxId;
+  closeCtxMenu();
+  showTransactionDetails(id);
+}
+
+function ctxEditNote() {
+  const id = ctxTxId;
+  closeCtxMenu();
+  editTxNote(id);
+}
+
+function showTransactionDetails(id) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) { showToast('Transaction not found.'); return; }
+
+  // Find related transactions (same vendor)
+  const key = normDesc(t.desc);
+  const similar = state.transactions
+    .filter(x => x.id !== t.id && normDesc(x.desc) === key)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  // Find split siblings (same date, desc starts with same prefix, marked as split)
+  const splits = state.transactions.filter(x =>
+    x.id !== t.id && x.date === t.date &&
+    / \[split \d+\/\d+\]$/.test(x.desc) &&
+    x.desc.replace(/ \[split \d+\/\d+\]$/, '') === t.desc.replace(/ \[split \d+\/\d+\]$/, '')
+  );
+
+  // Find trip assignment
+  let tripInfo = null;
+  (state.trips || []).forEach(trip => {
+    if ((trip.txIds || []).includes(t.id)) tripInfo = trip;
+  });
+
+  // Vendor rule / contact rule info
+  const vendorRule = (state.vendorRules || {})[key];
+  const contactRule = t.contact ? (state.contactRules || {})[t.contact.name] : null;
+
+  // Category stats across all similar
+  const catCounts = {};
+  similar.forEach(x => { catCounts[x.category || 'Unknown'] = (catCounts[x.category || 'Unknown'] || 0) + 1; });
+  const catSummary = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+
+  // Spending totals with this vendor
+  const totalSpent = similar.filter(x => x.type === 'expense').reduce((s, x) => s + x.amount, 0)
+                   + (t.type === 'expense' ? t.amount : 0);
+  const totalReceived = similar.filter(x => x.type === 'income').reduce((s, x) => s + x.amount, 0)
+                      + (t.type === 'income' ? t.amount : 0);
+  const firstSeen = similar.length > 0 ? [...similar, t].map(x => x.date).sort()[0] : t.date;
+
+  const acctDisplay = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+  const amountColor = t.type === 'income' ? 'var(--accent)' : (t.type === 'expense' ? 'var(--red)' : 'var(--muted)');
+  const amountSign  = t.type === 'income' ? '+' : (t.type === 'expense' ? '-' : '');
+
+  $('tx-details-title').textContent = 'Transaction Details';
+  $('tx-details-body').innerHTML = `
+    <!-- Hero: amount + desc -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;">
+      <div style="font-family:var(--serif);font-size:28px;color:${amountColor};letter-spacing:-0.5px;line-height:1;margin-bottom:8px;">${amountSign}${fmt(t.amount)}</div>
+      <div style="font-size:15px;font-weight:500;word-break:break-word;line-height:1.4;">${t.desc}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;">${t.date} · ID #${t.id}</div>
+    </div>
+
+    <!-- Attributes grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      ${detailTile('Type', `<span style="font-family:var(--mono);font-size:12px;color:${amountColor};">${t.type}</span>`)}
+      ${detailTile('Category', `<span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="font-size:11px;">${t.category||'Unknown'}</span>`)}
+      ${detailTile('Account', `<span class="account-pill" style="font-size:11px;">${acctDisplay || '—'}</span>`)}
+      ${detailTile('Date', `<span class="highlight-val" style="font-size:12px;">${t.date}</span>`)}
+      ${t.contact ? detailTile('Contact', `<span style="font-size:12px;color:var(--accent2);">${t.contact.dir==='in'?'↙ Received from':'↗ Sent to'} ${t.contact.name}${contactRule?.label ? ` <span style="opacity:0.7;font-size:10px;">(${contactRule.label})</span>` : ''}</span>`) : ''}
+      ${tripInfo ? detailTile('Trip', `<span style="font-size:12px;color:var(--accent3);">✈ ${tripInfo.name}</span>`) : ''}
+      ${t.notes ? detailTile('Note', `<span style="font-size:12px;color:var(--text);">${t.notes}</span>`) : ''}
+      ${vendorRule ? detailTile('Vendor Rule', `<span style="font-family:var(--mono);font-size:11px;color:var(--accent);">Auto → ${vendorRule}</span>`) : ''}
+    </div>
+
+    <!-- Split siblings if any -->
+    ${splits.length > 0 ? `
+      <div style="margin-bottom:16px;padding:12px;background:rgba(74,242,176,0.05);border:1px solid rgba(74,242,176,0.25);border-radius:8px;">
+        <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;">⌥ This is part of a split (${splits.length + 1} pieces)</div>
+        ${splits.map(s => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+          <span>${s.desc}</span>
+          <span style="font-family:var(--mono);">${fmt(s.amount)} · ${s.category}</span>
+        </div>`).join('')}
+      </div>` : ''}
+
+    <!-- Vendor history -->
+    ${similar.length > 0 ? `
+      <div style="margin-bottom:8px;">
+        <div class="chart-card-title" style="margin-bottom:10px;">History with this merchant</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Times Seen</div>
+            <div style="font-family:var(--serif);font-size:20px;color:var(--text);">${similar.length + 1}</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Total ${totalSpent > totalReceived ? 'Spent' : 'Received'}</div>
+            <div style="font-family:var(--serif);font-size:20px;color:${totalSpent > totalReceived ? 'var(--red)' : 'var(--accent)'};">${fmt(Math.max(totalSpent, totalReceived))}</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">First Seen</div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--text);margin-top:4px;">${firstSeen}</div>
+          </div>
+        </div>
+        ${catSummary.length > 1 ? `
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;">Categorized as:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            ${catSummary.map(([c, n]) => `<span class="category-pill" style="font-size:10px;">${c} (${n})</span>`).join('')}
+          </div>` : ''}
+        <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table class="tx-table" style="font-size:11px;">
+            <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Account</th></tr></thead>
+            <tbody>
+              ${similar.slice(0, 25).map(x => {
+                const xAcct = (x.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+                return `<tr style="cursor:pointer;" onclick="showTransactionDetails(${x.id})">
+                  <td><span class="highlight-val" style="font-size:10px;">${x.date}</span></td>
+                  <td style="font-family:var(--mono);font-size:11px;color:${x.type==='income'?'var(--accent)':'var(--red)'};">${x.type==='expense'?'-':'+'}${fmt(x.amount)}</td>
+                  <td><span class="category-pill" style="font-size:9px;">${x.category||'—'}</span></td>
+                  <td><span class="account-pill" style="font-size:9px;">${xAcct||'—'}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          ${similar.length > 25 ? `<div style="padding:8px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">… ${similar.length - 25} more not shown</div>` : ''}
+        </div>
+      </div>` : `<div style="padding:20px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface2);border-radius:8px;">First time seeing this merchant.</div>`}
+
+    <!-- Actions -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <button class="btn btn-ghost" style="font-size:11px;" onclick="closeModal('tx-details-modal'); editTxNote(${t.id});">✎ ${t.notes ? 'Edit' : 'Add'} Note</button>
+      <button class="btn btn-ghost" style="font-size:11px;" onclick="closeModal('tx-details-modal'); ctxTxId=${t.id}; ctxSplitTx();">⌥ Split</button>
+      <button class="btn btn-ghost" style="font-size:11px;" onclick="closeModal('tx-details-modal'); ctxTxId=${t.id}; ctxAddToTrip();">✈ Add to Trip</button>
+      <button class="btn btn-danger" style="font-size:11px;margin-left:auto;" onclick="if(confirm('Delete this transaction?')){deleteTransaction(${t.id});closeModal('tx-details-modal');}">✕ Delete</button>
+    </div>
+  `;
+  openModal('tx-details-modal');
+}
+
+function detailTile(label, valueHTML) {
+  return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">${label}</div>
+    <div>${valueHTML}</div>
+  </div>`;
+}
 
 function ctxSplitTx() {
   _splitTxId = ctxTxId;
@@ -3453,24 +3612,24 @@ function refreshTransactions() {
   }
   body.innerHTML = filtered.map(t => {
     const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
-    return `<tr oncontextmenu="openCtxMenu(event,${t.id})" style="cursor:context-menu;">
-      <td><span class="highlight-val">${t.date}</span></td>
-      <td>
+    return `<tr oncontextmenu="openCtxMenu(event,${t.id})" style="cursor:pointer;">
+      <td onclick="showTransactionDetails(${t.id})"><span class="highlight-val">${t.date}</span></td>
+      <td onclick="showTransactionDetails(${t.id})">
         <div style="font-size:13px;">${t.desc}</div>
         ${t.contact ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${t.contact.dir==='in'?'↙':'↗'} ${t.contact.name}${((state.contactRules||{})[t.contact.name]||{}).label ? ' · <span style=\"opacity:0.7;\">' + state.contactRules[t.contact.name].label + '</span>' : ''}</div>` : ''}
       </td>
-      <td>
+      <td onclick="event.stopPropagation();">
         <span class="category-pill${t.category==='Unknown'?' unknown-cat':''}" style="cursor:pointer;${catPillStyle(t.category)}" onclick="quickCatEdit(${t.id}, this)">${t.category||'Unknown'}</span>
       </td>
-      <td style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
-      <td class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
-      <td>${acct ? `<span class="account-pill" style="${acctPillStyle(acct)}">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
-      <td>
+      <td onclick="showTransactionDetails(${t.id})" style="font-family:var(--mono);font-size:11px;color:${t.type==='income'?'var(--accent)':'var(--red)'}">${t.type}</td>
+      <td onclick="showTransactionDetails(${t.id})" class="tx-amount ${t.type}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+      <td onclick="showTransactionDetails(${t.id})">${acct ? `<span class="account-pill" style="${acctPillStyle(acct)}">${acct}</span>` : '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">—</span>'}</td>
+      <td onclick="event.stopPropagation();">
         ${t.notes
           ? `<span class="tx-note-pill" onclick="editTxNote(${t.id})" title="${t.notes.replace(/"/g,'&quot;')}">${t.notes.slice(0,22)}${t.notes.length>22?'…':''}</span>`
           : `<button class="btn btn-ghost" onclick="editTxNote(${t.id})" style="font-size:10px;padding:2px 7px;opacity:0.4;" title="Add note">+ note</button>`}
       </td>
-      <td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
+      <td onclick="event.stopPropagation();"><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">✕</button></td>
     </tr>`;
   }).join('');
 }
@@ -3766,7 +3925,7 @@ function renderBillsList() {
     const sign = b.type === 'income' ? '+' : '-';
     const col  = b.type === 'income' ? 'var(--accent)' : 'var(--red)';
     const nthStr = b.day === 1 ? '1st' : b.day === 2 ? '2nd' : b.day === 3 ? '3rd' : b.day + 'th';
-    return `<div class="bill-row">
+    return `<div class="bill-row" style="cursor:pointer;" onclick="showBillDetails(${b.id})" title="Click for details">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="bill-dot-large" style="background:${b.color||'#f2a83a'};"></div>
         <div>
@@ -3774,12 +3933,97 @@ function renderBillsList() {
           <div class="bill-meta">${b.category} · ${b.frequency === 'biweekly' ? 'every 2 weeks (anchor ' + nthStr + ')' : nthStr + ' of each month'}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:14px;">
+      <div style="display:flex;align-items:center;gap:14px;" onclick="event.stopPropagation();">
         <div class="bill-amount" style="color:${col};">${sign}${fmt(b.amount)}</div>
         <button class="btn btn-danger" onclick="deleteBill(${b.id})">✕</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function showBillDetails(billId) {
+  const b = (state.bills || []).find(x => x.id === billId);
+  if (!b) { showToast('Bill not found.'); return; }
+
+  // Find past transactions matching this bill
+  const billKey = normDesc(b.name);
+  const matches = state.transactions
+    .filter(t => {
+      const tKey = normDesc(t.desc);
+      return billKey && tKey && (tKey.includes(billKey.slice(0, 6)) || billKey.includes(tKey.slice(0, 6)));
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const totalPaid = matches.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const avgAmount = matches.length > 0 ? totalPaid / matches.filter(t => t.type === 'expense').length : b.amount;
+  const sign = b.type === 'income' ? '+' : '-';
+  const col = b.type === 'income' ? 'var(--accent)' : 'var(--red)';
+  const nthStr = b.day === 1 ? '1st' : b.day === 2 ? '2nd' : b.day === 3 ? '3rd' : b.day + 'th';
+
+  // Next occurrence
+  const today = new Date();
+  const next = new Date(today.getFullYear(), today.getMonth(), b.day);
+  if (next < today) next.setMonth(next.getMonth() + 1);
+  const daysUntil = Math.ceil((next - today) / 86400000);
+
+  $('tx-details-title').textContent = 'Bill Details';
+  $('tx-details-body').innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="bill-dot-large" style="background:${b.color||'#f2a83a'};"></div>
+        <div style="font-family:var(--serif);font-size:24px;">${b.name}</div>
+      </div>
+      <div style="font-family:var(--serif);font-size:28px;color:${col};">${sign}${fmt(b.amount)}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;">
+        ${b.frequency === 'biweekly' ? 'Every 2 weeks (anchor ' + nthStr + ')' : nthStr + ' of each month'}
+        · Next: in ${daysUntil} day${daysUntil!==1?'s':''}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      ${detailTile('Category', `<span class="category-pill" style="font-size:11px;">${b.category}</span>`)}
+      ${detailTile('Type', `<span style="font-family:var(--mono);font-size:12px;color:${col};">${b.type}</span>`)}
+      ${detailTile('Frequency', `<span style="font-family:var(--mono);font-size:12px;">${b.frequency || 'monthly'}</span>`)}
+      ${detailTile('Due Day', `<span class="highlight-val" style="font-size:12px;">${nthStr}</span>`)}
+    </div>
+
+    ${matches.length > 0 ? `
+      <div style="margin-bottom:8px;">
+        <div class="chart-card-title" style="margin-bottom:10px;">Past Payments (${matches.length} matching transactions)</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Total Paid (All Time)</div>
+            <div style="font-family:var(--serif);font-size:20px;color:var(--red);">${fmt(totalPaid)}</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Average Amount</div>
+            <div style="font-family:var(--serif);font-size:20px;color:var(--text);">${fmt(avgAmount)}</div>
+          </div>
+        </div>
+        <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table class="tx-table" style="font-size:11px;">
+            <thead><tr><th>Date</th><th>Amount</th><th>Description</th><th>Account</th></tr></thead>
+            <tbody>
+              ${matches.slice(0, 40).map(x => {
+                const xAcct = (x.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+                return `<tr style="cursor:pointer;" onclick="closeModal('tx-details-modal'); showTransactionDetails(${x.id});">
+                  <td><span class="highlight-val" style="font-size:10px;">${x.date}</span></td>
+                  <td style="font-family:var(--mono);font-size:11px;color:${x.type==='income'?'var(--accent)':'var(--red)'};">${x.type==='expense'?'-':'+'}${fmt(x.amount)}</td>
+                  <td style="font-size:11px;">${x.desc.slice(0, 40)}${x.desc.length>40?'…':''}</td>
+                  <td><span class="account-pill" style="font-size:9px;">${xAcct||'—'}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          ${matches.length > 40 ? `<div style="padding:8px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">… ${matches.length - 40} more not shown</div>` : ''}
+        </div>
+      </div>` : `<div style="padding:20px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface2);border-radius:8px;">No matching transactions found yet — this bill hasn't been paid through any tracked account.</div>`}
+
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <button class="btn btn-danger" style="font-size:11px;margin-left:auto;" onclick="if(confirm('Delete this bill?')){deleteBill(${b.id});closeModal('tx-details-modal');}">✕ Delete Bill</button>
+    </div>
+  `;
+  openModal('tx-details-modal');
 }
 
 // ═══════════════════════════════════
@@ -4245,7 +4489,7 @@ function refreshDashboard() {
     } else {
       rb.innerHTML = recent.map(t => {
         const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
-        return `<tr>
+        return `<tr style="cursor:pointer;" onclick="showTransactionDetails(${t.id})" oncontextmenu="openCtxMenu(event,${t.id})">
           <td><span class="highlight-val">${t.date}</span></td>
           <td>${t.desc}</td>
           <td><span class="category-pill${t.category==='Unknown'?' unknown-cat':''}">${t.category||'—'}</span></td>
@@ -6123,6 +6367,20 @@ function handleCSVFile(file) {
     const lines = raw.trim().split(/\r?\n/).filter(l => l.trim());
     csvHeaders = parseCSVLine(lines[0]);
     csvRows = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
+
+    // ── Wealthsimple Holdings Report? Auto-route to holdings importer ──
+    // These files have AccountName, MarketValue, BookValueCAD columns (not transactions)
+    const headersLower = csvHeaders.map(h => h.toLowerCase().trim());
+    const isHoldings = headersLower.some(h => /account.?name/i.test(h)) &&
+                       headersLower.some(h => /market.?value/i.test(h)) &&
+                       headersLower.some(h => /book.?value/i.test(h)) &&
+                       headersLower.some(h => /symbol/i.test(h));
+    if (isHoldings) {
+      // Route through the same parser used on the Holdings page
+      importHoldingsFromRawCSV(raw, file.name);
+      return;
+    }
+
     window._ofxParsed = null;
     const colMapper = $('col-mapper'); if (colMapper) colMapper.style.display = '';
     detectedProfile = BANK_PROFILES.find(p => p.name !== 'OFX / QFX (Bank Standard)' && p.detect(csvHeaders))
@@ -6226,11 +6484,26 @@ function importMultipleCSVFiles(files) {
   [...files].forEach((file, fileIdx) => {
     const reader = new FileReader();
     reader.onload = e => {
-      const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+      const raw = e.target.result;
+      const lines = raw.trim().split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 1) { completed++; if (completed === fileCount) onAllDone(); return; }
 
       const headers = parseCSVLine(lines[0]);
-      const rows    = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
+
+      // ── Wealthsimple Holdings Report? Route to holdings importer ──
+      const hLow = headers.map(h => h.toLowerCase().trim());
+      const isHoldings = hLow.some(h => /account.?name/i.test(h)) &&
+                         hLow.some(h => /market.?value/i.test(h)) &&
+                         hLow.some(h => /book.?value/i.test(h)) &&
+                         hLow.some(h => /symbol/i.test(h));
+      if (isHoldings) {
+        importHoldingsFromRawCSV(raw, file.name);
+        completed++;
+        if (completed === fileCount) onAllDone();
+        return;
+      }
+
+      const rows = lines.slice(1).filter(r => r.trim()).map(parseCSVLine);
 
       const profile = BANK_PROFILES.find(p => p.detect(headers)) || BANK_PROFILES[BANK_PROFILES.length - 1];
       const parsed  = profile.parse(rows, headers);
@@ -6819,66 +7092,81 @@ let chartHoldingsPositions = null;
 function importHoldingsCSV(file) {
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    const raw = e.target.result;
-    const lines = raw.trim().split(/\r?\n/).filter(l => l.trim() && !l.startsWith('"As of'));
-
-    // Find the "As of" timestamp
-    const asOfMatch = raw.match(/As of (\d{4}-\d{2}-\d{2}[^"]*)/);
-    const asOf = asOfMatch ? asOfMatch[1].trim() : new Date().toISOString().slice(0,10);
-
-    if (lines.length < 2) { showToast('Could not read holdings CSV.'); return; }
-
-    const headers = parseCSVLine(lines[0]);
-    const hi = name => headers.findIndex(h => h.toLowerCase().replace(/[^a-z]/g,'').includes(name.toLowerCase().replace(/[^a-z]/g,'')));
-
-    // Detect Wealthsimple holdings format
-    const isWS = headers.some(h => /account.?name/i.test(h)) &&
-                 headers.some(h => /market.?value/i.test(h)) &&
-                 headers.some(h => /book.?value/i.test(h));
-
-    if (!isWS) {
-      showToast('Unrecognized holdings format. Expected Wealthsimple Holdings CSV.');
-      return;
-    }
-
-    const rows = lines.slice(1).map(parseCSVLine).filter(r => r.length > 5 && r[0]);
-
-    const parsed = rows.map(r => {
-      const get = name => {
-        const i = hi(name);
-        return i >= 0 ? (r[i] || '').trim() : '';
-      };
-      const getNum = name => parseFloat(get(name)) || 0;
-
-      return {
-        account:        get('AccountName'),
-        accountType:    get('AccountType'),
-        accountNumber:  get('AccountNumber'),
-        symbol:         get('Symbol'),
-        exchange:       get('Exchange'),
-        name:           get('Name'),
-        securityType:   get('SecurityType').replace(/_/g,' ').toLowerCase()
-                          .replace(/\b\w/g, c => c.toUpperCase()),
-        qty:            getNum('Quantity'),
-        price:          getNum('MarketPrice'),
-        priceCurrency:  get('MarketPriceCurrency'),
-        bookValue:      getNum('BookValueCAD'),
-        marketValue:    getNum('MarketValue'),
-        unrealizedGain: getNum('MarketUnrealizedReturns'),
-        asOf
-      };
-    }).filter(h => h.symbol && h.marketValue > 0);
-
-    if (parsed.length === 0) { showToast('No valid holdings found in file.'); return; }
-
-    state.holdings = parsed;
-    saveState();
-    refreshHoldings();
-    syncHoldingsToNetWorth();
-    showToast(`${parsed.length} holdings imported across ${new Set(parsed.map(h=>h.account)).size} accounts!`);
-  };
+  reader.onload = e => importHoldingsFromRawCSV(e.target.result, file.name);
   reader.readAsText(file);
+}
+
+function importHoldingsFromRawCSV(raw, filename) {
+  const lines = raw.trim().split(/\r?\n/).filter(l => l.trim() && !l.startsWith('"As of'));
+
+  // Find the "As of" timestamp
+  const asOfMatch = raw.match(/As of (\d{4}-\d{2}-\d{2}[^"]*)/);
+  const asOf = asOfMatch ? asOfMatch[1].trim() : new Date().toISOString().slice(0,10);
+
+  if (lines.length < 2) { showToast('Could not read holdings CSV.'); return; }
+
+  const headers = parseCSVLine(lines[0]);
+  const hi = name => headers.findIndex(h => h.toLowerCase().replace(/[^a-z]/g,'').includes(name.toLowerCase().replace(/[^a-z]/g,'')));
+
+  // Detect Wealthsimple holdings format
+  const isWS = headers.some(h => /account.?name/i.test(h)) &&
+               headers.some(h => /market.?value/i.test(h)) &&
+               headers.some(h => /book.?value/i.test(h));
+
+  if (!isWS) {
+    showToast('Unrecognized holdings format. Expected Wealthsimple Holdings CSV.');
+    return;
+  }
+
+  const rows = lines.slice(1).map(parseCSVLine).filter(r => r.length > 5 && r[0]);
+
+  const parsed = rows.map(r => {
+    const get = name => {
+      const i = hi(name);
+      return i >= 0 ? (r[i] || '').trim() : '';
+    };
+    const getNum = name => parseFloat(get(name)) || 0;
+
+    return {
+      account:        get('AccountName'),
+      accountType:    get('AccountType'),
+      accountNumber:  get('AccountNumber'),
+      symbol:         get('Symbol'),
+      exchange:       get('Exchange'),
+      name:           get('Name'),
+      securityType:   get('SecurityType').replace(/_/g,' ').toLowerCase()
+                        .replace(/\b\w/g, c => c.toUpperCase()),
+      qty:            getNum('Quantity'),
+      price:          getNum('MarketPrice'),
+      priceCurrency:  get('MarketPriceCurrency'),
+      bookValue:      getNum('BookValueCAD'),
+      marketValue:    getNum('MarketValue'),
+      unrealizedGain: getNum('MarketUnrealizedReturns'),
+      asOf
+    };
+  }).filter(h => h.symbol && h.marketValue > 0);
+
+  if (parsed.length === 0) { showToast('No valid holdings found in file.'); return; }
+
+  state.holdings = parsed;
+  saveState();
+  refreshHoldings();
+  syncHoldingsToNetWorth();
+  // Also refresh the dashboard in case net worth changed
+  if (typeof refreshDashboard === 'function') refreshDashboard();
+  // Hide any CSV preview that was showing (if called from main import page)
+  const preview = $('csv-preview');
+  if (preview) preview.style.display = 'none';
+  const dropBanner = $('detect-banner');
+  if (dropBanner) dropBanner.style.display = 'none';
+  const acctCount = new Set(parsed.map(h => h.account)).size;
+  showToast(`✓ ${parsed.length} holdings imported across ${acctCount} account${acctCount!==1?'s':''} — view them on the Holdings page.`);
+  // Optionally auto-switch to the Holdings page
+  setTimeout(() => {
+    if (confirm('Holdings imported! View the Holdings page now?')) {
+      switchView('holdings');
+    }
+  }, 400);
 }
 
 function syncHoldingsToNetWorth() {
@@ -7255,14 +7543,14 @@ function refreshTransfers() {
     const dirLabel = dir === 'in' ? '↙ Received' : '↗ Sent';
     const dirColor = dir === 'in' ? 'var(--accent)' : 'var(--red)';
     const acct = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="showTransactionDetails(${t.id})" oncontextmenu="openCtxMenu(event,${t.id})">
       <td><span class="highlight-val">${t.date}</span></td>
       <td style="font-weight:500;font-size:12px;">${t.contact?.name||'—'}</td>
       <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.desc}</td>
       <td><span style="font-family:var(--mono);font-size:11px;color:${dirColor};">${dirLabel}</span></td>
       <td class="tx-amount ${dir==='in'?'income':'expense'}" style="font-family:var(--mono);">${dir==='in'?'+':'-'}${fmt(t.amount)}</td>
       <td>${acct ? `<span class="account-pill">${acct}</span>` : ''}</td>
-      <td><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Move to Transactions</button></td>
+      <td onclick="event.stopPropagation();"><button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;white-space:nowrap;" onclick="promoteToTransaction(${t.id})">→ Move to Transactions</button></td>
     </tr>`;
   }).join('');
 }
@@ -7804,12 +8092,28 @@ function showReviewItem() {
   // Find similar transactions (same normDesc key) for the "apply to all" offer
   const key = normDesc(t.desc);
   const similar = state.transactions.filter(x => x.id !== t.id && normDesc(x.desc) === key);
+  const similarSorted = [...similar].sort((a,b) => b.date.localeCompare(a.date));
   const acctDisplay = (t.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+
+  // Most-common category among similar that aren't unknown
+  const catCounts = {};
+  similar.forEach(x => {
+    if (x.category && x.category !== 'Unknown' && x.category !== 'Other') {
+      catCounts[x.category] = (catCounts[x.category] || 0) + 1;
+    }
+  });
+  const suggestedCat = Object.entries(catCounts).sort((a,b) => b[1]-a[1])[0];
+
+  // Find trip assignment
+  let tripInfo = null;
+  (state.trips || []).forEach(trip => {
+    if ((trip.txIds || []).includes(t.id)) tripInfo = trip;
+  });
 
   $('review-progress').textContent = `${reviewIdx + 1} of ${reviewQueue.length} unknown`;
   $('review-body').innerHTML = `
     <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
           <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Date</div>
           <div style="font-size:13px;font-weight:500;">${t.date}</div>
@@ -7830,17 +8134,45 @@ function showReviewItem() {
           <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Type</div>
           <div style="font-family:var(--mono);font-size:12px;color:${t.type==='income'?'var(--accent)':'var(--red)'};">${t.type}</div>
         </div>
-        ${t.contact ? `<div style="grid-column:1/-1;">
+        ${t.contact ? `<div>
           <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Contact</div>
           <div style="font-size:12px;color:var(--accent2);">${t.contact.dir==='in'?'↙ Received from':'↗ Sent to'} ${t.contact.name}</div>
         </div>` : ''}
+        ${tripInfo ? `<div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Trip</div>
+          <div style="font-size:12px;color:var(--accent3);">✈ ${tripInfo.name}</div>
+        </div>` : ''}
+        ${t.notes ? `<div style="grid-column:1/-1;">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Note</div>
+          <div style="font-size:12px;">${t.notes}</div>
+        </div>` : ''}
       </div>
-      ${similar.length > 0 ? `<div style="font-family:var(--mono);font-size:10px;color:var(--accent3);margin-top:4px;">⚑ ${similar.length} other transaction${similar.length>1?'s':''} from same vendor</div>` : ''}
+      ${similar.length > 0 ? `
+        <details style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <summary style="font-family:var(--mono);font-size:10px;color:var(--accent3);cursor:pointer;user-select:none;">
+            ⚑ ${similar.length} other transaction${similar.length>1?'s':''} from this merchant
+            ${suggestedCat ? ` · most often categorized as <strong style="color:var(--accent);">${suggestedCat[0]}</strong>` : ''}
+          </summary>
+          <div style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+            <table class="tx-table" style="font-size:10px;">
+              <thead><tr><th>Date</th><th>Amt</th><th>Cat</th><th>Acct</th></tr></thead>
+              <tbody>${similarSorted.slice(0, 15).map(x => {
+                const xAcct = (x.account||'').replace('Wealthsimple Activities Export','Wealthsimple').replace(' Credit Card','');
+                return `<tr>
+                  <td style="font-family:var(--mono);font-size:10px;">${x.date}</td>
+                  <td style="font-family:var(--mono);font-size:10px;color:${x.type==='income'?'var(--accent)':'var(--red)'};">${x.type==='expense'?'-':'+'}${fmt(x.amount)}</td>
+                  <td><span class="category-pill" style="font-size:9px;">${x.category||'—'}</span></td>
+                  <td><span class="account-pill" style="font-size:9px;">${xAcct||'—'}</span></td>
+                </tr>`;
+              }).join('')}</tbody>
+            </table>
+          </div>
+        </details>` : ''}
     </div>
     <div class="form-group" style="margin-bottom:10px;">
-      <label class="form-label">Assign Category</label>
+      <label class="form-label">Assign Category${suggestedCat ? ` <span style="font-family:var(--mono);font-size:10px;color:var(--accent);">(suggested: ${suggestedCat[0]})</span>` : ''}</label>
       <select class="form-select" id="review-cat">
-        ${CATEGORIES.map(c => `<option value="${c}" ${c===t.category?'selected':''}>${c}</option>`).join('')}
+        ${CATEGORIES.map(c => `<option value="${c}" ${c===(suggestedCat?.[0] || t.category)?'selected':''}>${c}</option>`).join('')}
       </select>
     </div>
     ${similar.length > 0 ? `
