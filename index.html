@@ -2763,7 +2763,8 @@
   <div id="ctx-panel-more" style="display:none;padding:4px 0;">
     <div class="ctx-item" onclick="ctxShowDetails()" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">ⓘ View Details…</div>
     <div class="ctx-item" onclick="ctxEditNote()"    style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✎ Edit Note…</div>
-    <div class="ctx-item" onclick="ctxSplitTx()"     style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">⌥ Split Transaction…</div>
+    <div class="ctx-item" onclick="ctxAddAsBill()"   style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">🔄 Add as Recurring Bill…</div>
+    <div class="ctx-item" onclick="ctxSplitTx()"     style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;" title="Divide this transaction into multiple pieces with different categories">⌥ Split Transaction…</div>
     <div class="ctx-item" onclick="ctxAddToTrip()" id="ctx-trip-item" style="padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px;">✈ Add to Trip…</div>
   </div>
 </div>
@@ -3099,6 +3100,65 @@ function ctxEditNote() {
   const id = ctxTxId;
   closeCtxMenu();
   editTxNote(id);
+}
+
+function ctxAddAsBill() {
+  const id = ctxTxId;
+  closeCtxMenu();
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) { showToast('Transaction not found.'); return; }
+
+  // Check if a similar bill already exists
+  const tKey = normDesc(t.desc);
+  const existing = (state.bills || []).find(b => {
+    const bKey = normDesc(b.name);
+    const short = bKey.length < tKey.length ? bKey : tKey;
+    const long  = bKey.length < tKey.length ? tKey : bKey;
+    return short.length >= 4 && long.includes(short);
+  });
+  if (existing) {
+    if (!confirm(`A bill matching "${t.desc}" already exists ("${existing.name}" at ${fmt(existing.amount)}). Add another anyway?`)) return;
+  }
+
+  // Pre-populate the bill modal with this transaction's data
+  // Use a cleaned-up vendor name (strip reference codes/URLs) but keep it human-readable
+  let suggestedName = t.desc
+    .replace(/\s+www\.[a-z0-9.-]+/gi, '')
+    .replace(/\s+https?:\/\/\S+/gi, '')
+    .replace(/\*[A-Z0-9]{4,}/gi, '')
+    .replace(/\s*#\d+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  // Title-case the vendor part if it's all uppercase (TIM HORTONS → Tim Hortons)
+  if (suggestedName === suggestedName.toUpperCase() && suggestedName.length > 3) {
+    suggestedName = suggestedName.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // Take just the first 40 chars for a cleaner display
+  if (suggestedName.length > 40) suggestedName = suggestedName.slice(0, 40).trim();
+
+  // Infer day of month from the transaction's date
+  const dom = parseInt(t.date.slice(8, 10));
+
+  $('bill-name').value      = suggestedName;
+  $('bill-amount').value    = t.amount.toFixed(2);
+  $('bill-day').value       = Math.min(28, dom || 1);
+  $('bill-frequency').value = 'monthly';
+  $('bill-type').value      = t.type === 'income' ? 'income' : 'expense';
+
+  // Match category to an existing bill-category option, fall back to Other
+  const catSel = $('bill-category');
+  const catOpts = [...catSel.options].map(o => o.value);
+  catSel.value = catOpts.includes(t.category) ? t.category : 'Other';
+
+  // Default color based on type
+  $('bill-color').value = t.type === 'income' ? '#3af2a8' : '#f2a83a';
+
+  // Update the modal title to make it clear what's happening
+  const modal = $('bill-modal');
+  const title = modal ? modal.querySelector('.modal-title') : null;
+  if (title) title.textContent = 'Add as Recurring Bill';
+
+  openModal('bill-modal');
 }
 
 function showTransactionDetails(id) {
@@ -3903,8 +3963,14 @@ function addBill() {
   saveState();
   closeModal('bill-modal');
   $('bill-name').value = ''; $('bill-amount').value = ''; $('bill-day').value = '';
+  // Reset modal title in case it was changed by "Add as Recurring Bill"
+  const modal = $('bill-modal');
+  const title = modal ? modal.querySelector('.modal-title') : null;
+  if (title) title.textContent = 'Add Recurring Bill';
   showToast('Recurring bill added!');
   renderCalendar();
+  renderBillsList();
+  refreshDashboard();
 }
 
 function deleteBill(id) {
