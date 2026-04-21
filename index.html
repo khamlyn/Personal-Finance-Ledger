@@ -2820,9 +2820,24 @@ function openModal(id) {
 }
 function closeModal(id) { $(id).classList.remove('open'); }
 
-// Close modal on backdrop click
+// Close modal on backdrop click — but ignore events within 300ms of input focus
+// (mobile keyboards fire spurious tap events when opening/closing)
+let _modalInputFocusAt = 0;
+document.addEventListener('focusin', e => {
+  if (e.target && e.target.matches && e.target.matches('input, select, textarea')) {
+    _modalInputFocusAt = Date.now();
+  }
+});
 document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if(e.target === o) o.classList.remove('open'); });
+  o.addEventListener('click', e => {
+    if (e.target !== o) return;
+    // Ignore close-on-outside if an input was just focused (mobile keyboard quirk)
+    if (Date.now() - _modalInputFocusAt < 400) return;
+    // Ignore if any input/select is currently focused inside this modal
+    if (o.contains(document.activeElement) &&
+        document.activeElement.matches('input, select, textarea')) return;
+    o.classList.remove('open');
+  });
 });
 
 // ═══════════════════════════════════
@@ -4791,7 +4806,7 @@ function renderNWHistoryCharts(snaps) {
     });
   }
 
-  // Composition chart — assets positive, liabilities negative, stacked bar
+  // Composition chart — assets positive (above zero), liabilities negative (below zero)
   if (chartNWComp) chartNWComp.destroy();
   const compCanvas = $('chart-nw-composition');
   if (compCanvas) {
@@ -4800,16 +4815,22 @@ function renderNWHistoryCharts(snaps) {
       data: {
         labels,
         datasets: [
-          { label: 'Assets', data: assets, backgroundColor: 'rgba(196,242,58,0.7)', borderRadius: 2 },
-          { label: 'Liabilities', data: liabs, backgroundColor: 'rgba(242,90,58,0.7)', borderRadius: 2 }
+          { label: 'Assets',      data: assets, backgroundColor: 'rgba(196,242,58,0.75)', borderRadius: 2 },
+          { label: 'Liabilities', data: liabs,  backgroundColor: 'rgba(242,90,58,0.75)',  borderRadius: 2 }
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } } },
+        plugins: {
+          legend: { position: 'bottom', labels: { color: textColor, font: { family: 'DM Mono', size: 10 } } },
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(Math.abs(ctx.parsed.y)) } }
+        },
         scales: {
-          x: { stacked: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
-          y: { stacked: true, ticks: { color: textColor, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: gridColor } }
+          x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
+          y: {
+            ticks: { color: textColor, callback: v => (v < 0 ? '-' : '') + '$' + (Math.abs(v)/1000).toFixed(0) + 'k' },
+            grid: { color: gridColor }
+          }
         }
       }
     });
@@ -6119,7 +6140,9 @@ function renderCSVPreview() {
 }
 
 function makeDupeKey(date, desc, amount) {
-  return `${normalizeDate(date)}|${desc.toLowerCase().trim()}|${parseFloat(amount).toFixed(2)}`;
+  // Use normDesc so "PrimeVideo.c*BBOGN5VY1 www.amazon.c" and "PrimeVideo.c*BBOGN5VY1"
+  // resolve to the same key — catches duplicates from CSV + PDF of the same statement
+  return `${normalizeDate(date)}|${normDesc(desc)}|${parseFloat(amount).toFixed(2)}`;
 }
 
 function importMultipleCSVFiles(files) {
@@ -7566,6 +7589,16 @@ function renderAccountReassign() {
     return false;
   }).length;
 
+  // Duplicate detection — uses new normDesc-based dedup key
+  const dupeMap = {};
+  state.transactions.forEach(t => {
+    const k = makeDupeKey(t.date, t.desc, t.amount);
+    if (!dupeMap[k]) dupeMap[k] = [];
+    dupeMap[k].push(t.id);
+  });
+  const dupeGroups = Object.values(dupeMap).filter(g => g.length > 1);
+  const dupeCount = dupeGroups.reduce((s, g) => s + g.length - 1, 0);
+
   el.innerHTML = (suspectCount > 0 ? `
     <div style="padding:12px 14px;background:rgba(242,200,58,0.08);border:1px solid rgba(242,200,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
@@ -7573,6 +7606,14 @@ function renderAccountReassign() {
         <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">These look like credit card expenses imported with the wrong sign. Click Fix Now to reclassify them.</div>
       </div>
       <button class="btn btn-primary" style="font-size:12px;" onclick="repairGenericIncomeTypes()">Fix Now</button>
+    </div>` : '') +
+    (dupeCount > 0 ? `
+    <div style="padding:12px 14px;background:rgba(242,90,58,0.08);border:1px solid rgba(242,90,58,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;">⚠ ${dupeCount} duplicate transaction${dupeCount!==1?'s':''} found</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">Same date, amount, and vendor — likely imported twice (e.g. CSV and PDF of the same statement). Keeps the oldest entry in each duplicate group.</div>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px;" onclick="removeDuplicateTransactions()">Remove Duplicates</button>
     </div>` : '') +
     accounts.map(([name, count]) => `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
@@ -7594,6 +7635,33 @@ function bulkReassignAccount(oldName) {
   state.transactions.forEach(t => { if (t.account === oldName) { t.account = newName; count++; } });
   saveState(); refreshSettings(); refreshTransactions();
   showToast('"' + oldName + '" → "' + newName + '" on ' + count + ' transaction' + (count!==1?'s':'') + '.');
+}
+
+function removeDuplicateTransactions() {
+  // Group by (normalized date + normDesc + amount). Keep the oldest (lowest ID) in each group.
+  const groups = {};
+  state.transactions.forEach(t => {
+    const k = makeDupeKey(t.date, t.desc, t.amount);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(t);
+  });
+  let removed = 0;
+  const keepIds = new Set();
+  Object.values(groups).forEach(group => {
+    if (group.length === 1) { keepIds.add(group[0].id); return; }
+    // Sort by ID ascending — keep the first (oldest)
+    group.sort((a, b) => (a.id || 0) - (b.id || 0));
+    keepIds.add(group[0].id);
+    removed += group.length - 1;
+  });
+  if (removed === 0) { showToast('No duplicates found.'); return; }
+  if (!confirm('Found ' + removed + ' duplicate transaction' + (removed!==1?'s':'') + '. Remove them now? (The oldest entry in each group will be kept.)')) return;
+  state.transactions = state.transactions.filter(t => keepIds.has(t.id));
+  saveState();
+  refreshSettings();
+  refreshTransactions();
+  refreshDashboard();
+  showToast('Removed ' + removed + ' duplicate' + (removed!==1?'s':'') + '.');
 }
 
 function repairGenericIncomeTypes() {
