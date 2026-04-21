@@ -1531,10 +1531,13 @@
           </div>
           <table class="tx-table" id="csv-preview-table"></table>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <label style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;">Account name:</label>
-            <input type="text" class="form-input" id="import-account-override" placeholder="e.g. TD Aeroplan Visa"
-                   style="flex:1;max-width:260px;font-size:12px;" title="Override the account label for all transactions in this file">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Leave blank to use detected name</span>
+            <label style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;">Assign to account:</label>
+            <select class="form-select" id="import-account-select" onchange="onImportAccountChange(this)" style="flex:0 1 240px;font-size:12px;">
+              <option value="__detected__">Use detected name</option>
+            </select>
+            <input type="text" class="form-input" id="import-account-override" placeholder="New account name…"
+                   style="display:none;flex:1;max-width:260px;font-size:12px;" title="Enter a new account name">
+            <span id="import-account-hint" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Pick one of your existing accounts, or add a new one</span>
           </div>
           <div style="margin-top:10px;display:flex;gap:10px;">
             <button class="btn btn-primary" onclick="importCSV()">Import All</button>
@@ -3945,17 +3948,34 @@ function showBillDetails(billId) {
   const b = (state.bills || []).find(x => x.id === billId);
   if (!b) { showToast('Bill not found.'); return; }
 
-  // Find past transactions matching this bill
+  // ── Match transactions to this bill ────────────────────────────────────
+  // Key match: the full normDesc of the bill should be a substring of the tx's normDesc
+  // (or vice-versa) — no prefix-slicing which collides for similarly-named bills
+  // Amount match: within 15% of bill amount (absorbs small fluctuations like currency exchange)
   const billKey = normDesc(b.name);
-  const matches = state.transactions
-    .filter(t => {
-      const tKey = normDesc(t.desc);
-      return billKey && tKey && (tKey.includes(billKey.slice(0, 6)) || billKey.includes(tKey.slice(0, 6)));
-    })
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const billAmt = +b.amount || 0;
+  const tol = Math.max(0.02, billAmt * 0.15);  // 15% tolerance, min 2 cents
+
+  const matches = state.transactions.filter(t => {
+    const tKey = normDesc(t.desc);
+    if (!billKey || !tKey) return false;
+
+    // Key similarity: full tokens must overlap substantially
+    // — for "netflix" vs "netflix comvancover": "netflix comvancover".includes("netflix") = true ✓
+    // — for "netflix" vs "netflix foo": also ✓
+    // — but for "netflix" (bill) vs some OTHER "netflix.com..." transaction:
+    //   we further require amount match so the correct bill gets each tx
+    const keyMatch = tKey.includes(billKey) || billKey.includes(tKey);
+    if (!keyMatch) return false;
+
+    // Amount match (skip transfers/unknown types)
+    const amtDiff = Math.abs(Math.abs(t.amount) - billAmt);
+    return amtDiff <= tol;
+  }).sort((a, x) => x.date.localeCompare(a.date));
 
   const totalPaid = matches.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const avgAmount = matches.length > 0 ? totalPaid / matches.filter(t => t.type === 'expense').length : b.amount;
+  const expCount = matches.filter(t => t.type === 'expense').length;
+  const avgAmount = expCount > 0 ? totalPaid / expCount : b.amount;
   const sign = b.type === 'income' ? '+' : '-';
   const col = b.type === 'income' ? 'var(--accent)' : 'var(--red)';
   const nthStr = b.day === 1 ? '1st' : b.day === 2 ? '2nd' : b.day === 3 ? '3rd' : b.day + 'th';
@@ -4075,10 +4095,18 @@ function detectRecurringBills() {
     const months = new Set(matches.map(t => t.date.slice(0, 7)));
     if (months.size < 2) return;
 
-    // Already have this bill?
-    const alreadyAdded = (state.bills || []).some(b =>
-      b.name.toLowerCase().includes(p.name.toLowerCase().slice(0, 8))
-    );
+    // Already have this bill? — match by amount + name overlap, not just name prefix
+    const patKey = normDesc(p.name);
+    const medAmt = (matches.map(t => t.amount).sort((a,b)=>a-b))[Math.floor(matches.length/2)];
+    const alreadyAdded = (state.bills || []).some(b => {
+      const bKey = normDesc(b.name);
+      const bAmt = +b.amount || 0;
+      const amtClose = Math.abs(bAmt - medAmt) <= Math.max(1, Math.min(bAmt, medAmt) * 0.15);
+      const short = patKey.length < bKey.length ? patKey : bKey;
+      const long  = patKey.length < bKey.length ? bKey : patKey;
+      const nameOverlap = short.length >= 4 && long.includes(short);
+      return amtClose && nameOverlap;
+    });
     if (alreadyAdded) return;
     // Already dismissed?
     const dismissed = (state.dismissedSuggestions || []);
@@ -4152,10 +4180,17 @@ function detectRecurringBills() {
     );
     if (alreadyCovered) return;
 
-    // Already in bills list?
-    const alreadyAdded = (state.bills || []).some(b =>
-      normDesc(b.name).includes(key.slice(0, 8)) || key.includes(normDesc(b.name).slice(0, 8))
-    );
+    // Already in bills list? — must match on BOTH amount and name overlap
+    const medAmt2 = (txs.map(t => t.amount).sort((a,b)=>a-b))[Math.floor(txs.length/2)];
+    const alreadyAdded = (state.bills || []).some(b => {
+      const bKey = normDesc(b.name);
+      const bAmt = +b.amount || 0;
+      const amtClose = Math.abs(bAmt - medAmt2) <= Math.max(1, Math.min(bAmt, medAmt2) * 0.15);
+      const short = key.length < bKey.length ? key : bKey;
+      const long  = key.length < bKey.length ? bKey : key;
+      const nameOverlap = short.length >= 4 && long.includes(short);
+      return amtClose && nameOverlap;
+    });
     if (alreadyAdded) return;
 
     const amounts = txs.map(t => t.amount).sort((a, b) => a - b);
@@ -4203,7 +4238,42 @@ function detectRecurringBills() {
     });
   });
 
-  return [...patternSuggestions, ...freqSuggestions].slice(0, 20);
+  // ── Final dedup: merge suggestions that are really the same bill ─────
+  // Two suggestions are duplicates if they have similar amounts AND
+  // their normDesc names substantially overlap (shortest is a substring of the longest).
+  const all = [...patternSuggestions, ...freqSuggestions];
+  const deduped = [];
+  all.forEach(s => {
+    const sKey = normDesc(s.sampleDesc || s.name);
+    const sAmt = +s.amount || 0;
+    // Check against already-accepted suggestions
+    const conflictIdx = deduped.findIndex(d => {
+      const dKey = normDesc(d.sampleDesc || d.name);
+      const dAmt = +d.amount || 0;
+      // Amount within 15%
+      const amtDiff = Math.abs(sAmt - dAmt);
+      const amtClose = amtDiff <= Math.max(1, Math.min(sAmt, dAmt) * 0.15);
+      // Name overlap: shortest must be a substring of the longest
+      const short = sKey.length < dKey.length ? sKey : dKey;
+      const long  = sKey.length < dKey.length ? dKey : sKey;
+      const nameOverlap = short.length >= 4 && long.includes(short);
+      return amtClose && nameOverlap;
+    });
+    if (conflictIdx >= 0) {
+      // Keep the one with the cleaner (shorter) name, and merge match counts
+      const existing = deduped[conflictIdx];
+      const existingKey = normDesc(existing.sampleDesc || existing.name);
+      if (sKey.length < existingKey.length) {
+        // Replace with this cleaner-named suggestion
+        deduped[conflictIdx] = { ...s, matchCount: (existing.matchCount || 0) + (s.matchCount || 0) };
+      } else {
+        existing.matchCount = (existing.matchCount || 0) + (s.matchCount || 0);
+      }
+    } else {
+      deduped.push(s);
+    }
+  });
+  return deduped.slice(0, 20);
 }
 
 function openRecurringSuggestionsModal() {
@@ -6243,9 +6313,7 @@ async function handlePDFFile(file) {
     };
     detectedProfile = ofxLikeProfile;
     window._ofxParsed = parsed;
-    showDetectBanner({ icon: '📄', name: 'PDF Statement (' + parsed.length + ' transactions)' });
-    const ov = $('import-account-override');
-    if (ov) ov.value = 'TD Aeroplan Visa';
+    showDetectBanner({ icon: '📄', name: 'TD Aeroplan Visa' });
     $('csv-preview').style.display = 'block';
     const colMap = $('col-mapper');
     if (colMap) colMap.style.display = 'none';
@@ -6268,8 +6336,7 @@ async function handlePDFFile(file) {
 
 async function importMultiplePDFFiles(files) {
   const existingKeys = new Set(state.transactions.map(t => makeDupeKey(t.date, t.desc, t.amount)));
-  const overrideEl = $('import-account-override');
-  const accountName = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : 'TD Aeroplan Visa';
+  const accountName = resolveImportAccountName('TD Aeroplan Visa');
   let imported = 0, skipped = 0, fileCount = 0;
 
   for (const file of files) {
@@ -6397,8 +6464,98 @@ function showDetectBanner(profile) {
   $('detect-label').textContent = profile.name + ' detected';
   $('detect-desc').textContent  = '— columns mapped automatically';
   banner.style.display = 'flex';
-  const ov = $('import-account-override');
-  if (ov) ov.value = profile.name === 'Generic CSV' ? '' : profile.name;
+  // Populate the account dropdown with existing accounts + the detected default
+  populateImportAccountSelect(profile.name);
+}
+
+// Populates the account dropdown on the import preview with the user's existing accounts
+function populateImportAccountSelect(detectedName) {
+  const sel = $('import-account-select');
+  const override = $('import-account-override');
+  if (!sel) return;
+
+  // Collect unique account names from existing transactions
+  const existing = new Set();
+  (state.transactions || []).forEach(t => {
+    const a = (t.account || '').trim();
+    if (a) existing.add(a);
+  });
+  // Also pick up any accounts that appear only in holdings (not transactions)
+  (state.holdings || []).forEach(h => { if (h.account) existing.add(h.account); });
+
+  const sorted = [...existing].sort((a, b) => a.localeCompare(b));
+  const defaultName = (detectedName && detectedName !== 'Generic CSV') ? detectedName : '';
+
+  // Build options
+  let html = '';
+  if (defaultName && !existing.has(defaultName)) {
+    html += `<option value="__detected__" selected>📄 ${defaultName} (auto-detected — will be created)</option>`;
+  } else if (defaultName) {
+    html += `<option value="__detected__">📄 Use auto-detected: ${defaultName}</option>`;
+  } else {
+    html += `<option value="__detected__">— Select an account —</option>`;
+  }
+  if (sorted.length > 0) {
+    html += `<option disabled>──────────</option>`;
+    html += sorted.map(a => {
+      const preselect = (a === defaultName) ? ' selected' : '';
+      return `<option value="${a.replace(/"/g,'&quot;')}"${preselect}>${a}</option>`;
+    }).join('');
+  }
+  html += `<option disabled>──────────</option>`;
+  html += `<option value="__new__">+ Add new account…</option>`;
+  sel.innerHTML = html;
+
+  // Hide the freeform input unless user chose "new"
+  if (override) {
+    override.style.display = 'none';
+    override.value = '';
+  }
+  const hint = $('import-account-hint');
+  if (hint) {
+    if (defaultName && !existing.has(defaultName)) {
+      hint.innerHTML = `<span style="color:var(--accent);">✓ "${defaultName}" will be created as a new account</span>`;
+    } else {
+      hint.textContent = 'Pick one of your existing accounts, or add a new one';
+    }
+  }
+}
+
+// Resolves what account name to assign to transactions being imported
+// Reads the dropdown first (existing account), then the override text input (new account), then falls back
+function resolveImportAccountName(fallback) {
+  const sel = $('import-account-select');
+  const override = $('import-account-override');
+  if (sel && sel.value && sel.value !== '__detected__' && sel.value !== '__new__') {
+    return sel.value;
+  }
+  if (sel && sel.value === '__new__' && override && override.value.trim()) {
+    return override.value.trim();
+  }
+  return fallback;
+}
+
+// Called when the user switches dropdown selection
+function onImportAccountChange(sel) {
+  const override = $('import-account-override');
+  const hint = $('import-account-hint');
+  if (sel.value === '__new__') {
+    if (override) {
+      override.style.display = 'block';
+      override.value = '';
+      override.focus();
+    }
+    if (hint) hint.textContent = 'Enter a name for the new account';
+  } else {
+    if (override) { override.style.display = 'none'; override.value = ''; }
+    if (hint) {
+      if (sel.value === '__detected__') {
+        hint.textContent = 'Will use the auto-detected account name';
+      } else {
+        hint.innerHTML = `<span style="color:var(--accent);">✓ Assigning all transactions to: ${sel.value}</span>`;
+      }
+    }
+  }
 }
 
 function renderCSVPreview() {
@@ -6561,8 +6718,7 @@ function importCSV() {
   let imported = 0, skipped = 0, bad = 0;
 
   const profile      = detectedProfile || BANK_PROFILES[BANK_PROFILES.length - 1];
-  const overrideEl   = $('import-account-override');
-  const accountName  = (overrideEl && overrideEl.value.trim()) ? overrideEl.value.trim() : profile.name;
+  const accountName  = resolveImportAccountName(profile.name);
   // Use pre-parsed OFX data if available, otherwise parse CSV
   const parsed = window._ofxParsed || profile.parse(csvRows, csvHeaders);
   window._ofxParsed = null;
