@@ -2332,6 +2332,28 @@
         <input type="text" class="form-input" id="bill-name" placeholder="e.g. Netflix, Hydro, Car Insurance">
       </div>
     </div>
+    <!-- Payment method: standard or e-transfer -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select class="form-select" id="bill-payment-method" onchange="toggleBillEtransferRow()">
+          <option value="standard">Standard (credit card / direct debit)</option>
+          <option value="etransfer">Interac E-Transfer</option>
+        </select>
+      </div>
+    </div>
+    <div id="bill-etransfer-row" style="display:none;" class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">E-Transfer Recipient</label>
+        <select class="form-select" id="bill-etransfer-contact">
+          <option value="">— Pick a contact —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Or type recipient name</label>
+        <input type="text" class="form-input" id="bill-etransfer-name" placeholder="e.g. Jane Smith">
+      </div>
+    </div>
     <div class="form-row cols-2">
       <div class="form-group">
         <label class="form-label">Amount ($)</label>
@@ -2368,6 +2390,7 @@
           <option>Transport</option>
           <option>Healthcare</option>
           <option>Food & Dining</option>
+          <option>Home Services</option>
           <option>Salary</option>
           <option>Freelance</option>
           <option>Investment</option>
@@ -3152,6 +3175,26 @@ function ctxAddAsBill() {
 
   // Default color based on type
   $('bill-color').value = t.type === 'income' ? '#3af2a8' : '#f2a83a';
+
+  // If this transaction is an outgoing e-transfer, pre-set the payment method
+  const methodSel = $('bill-payment-method');
+  if (t.contact && t.contact.dir === 'out' && methodSel) {
+    methodSel.value = 'etransfer';
+    toggleBillEtransferRow();  // shows the contact row + populates dropdown
+    // Pre-select this contact in the dropdown
+    const contactSel = $('bill-etransfer-contact');
+    if (contactSel) {
+      // Find the matching option
+      const opt = [...contactSel.options].find(o => o.value.toLowerCase() === t.contact.name.toLowerCase());
+      if (opt) contactSel.value = opt.value;
+      else { $('bill-etransfer-name').value = t.contact.name; }
+    }
+    // Bill name defaults to the contact name if it came from e-transfer desc
+    $('bill-name').value = t.contact.name;
+  } else if (methodSel) {
+    methodSel.value = 'standard';
+    toggleBillEtransferRow();
+  }
 
   // Update the modal title to make it clear what's happening
   const modal = $('bill-modal');
@@ -3944,6 +3987,31 @@ function toggleBillDayLabel() {
   if (lbl) lbl.textContent = freq === 'biweekly' ? 'Anchor Day of Month' : 'Day of Month (1–28)';
 }
 
+function toggleBillEtransferRow() {
+  const method = ($('bill-payment-method') || {value:'standard'}).value;
+  const row = $('bill-etransfer-row');
+  if (row) row.style.display = method === 'etransfer' ? 'flex' : 'none';
+  if (method === 'etransfer') {
+    // Populate the contact dropdown from known e-transfer contacts
+    const contacts = new Set();
+    (state.transactions || []).forEach(t => {
+      if (t.contact && t.contact.name) contacts.add(t.contact.name);
+    });
+    // Also add names from contactRules
+    Object.keys(state.contactRules || {}).forEach(n => contacts.add(n));
+    const sel = $('bill-etransfer-contact');
+    if (sel) {
+      const sorted = [...contacts].sort((a,b) => a.localeCompare(b));
+      sel.innerHTML = '<option value="">— Pick a contact —</option>' +
+        sorted.map(n => {
+          const rule = (state.contactRules || {})[n];
+          const label = rule && rule.label ? ` (${rule.label})` : '';
+          return `<option value="${n.replace(/"/g,'&quot;')}">${n}${label}</option>`;
+        }).join('');
+    }
+  }
+}
+
 function addBill() {
   const name      = $('bill-name').value.trim();
   const amount    = parseFloat($('bill-amount').value);
@@ -3952,6 +4020,17 @@ function addBill() {
   const category  = $('bill-category').value;
   const color     = $('bill-color').value;
   const frequency = ($('bill-frequency') || {value:'monthly'}).value;
+  const method    = ($('bill-payment-method') || {value:'standard'}).value;
+
+  // E-transfer recipient: prefer dropdown selection, fall back to typed name
+  let etransferContact = null;
+  if (method === 'etransfer') {
+    const selVal  = ($('bill-etransfer-contact') || {value:''}).value.trim();
+    const typedVal = ($('bill-etransfer-name')   || {value:''}).value.trim();
+    const recipient = selVal || typedVal;
+    if (!recipient) { showToast('Please pick or type the e-transfer recipient name.'); return; }
+    etransferContact = recipient;
+  }
 
   if (!name || isNaN(amount) || amount <= 0 || isNaN(day) || day < 1 || day > 28) {
     showToast('Please fill in all fields. Day must be 1–28.');
@@ -3959,10 +4038,15 @@ function addBill() {
   }
 
   if (!state.bills) state.bills = [];
-  state.bills.push({ id: Date.now(), name, amount, day, type, category, color, frequency });
+  state.bills.push({ id: Date.now(), name, amount, day, type, category, color, frequency,
+                     paymentMethod: method, etransferContact });
   saveState();
   closeModal('bill-modal');
   $('bill-name').value = ''; $('bill-amount').value = ''; $('bill-day').value = '';
+  if ($('bill-payment-method')) $('bill-payment-method').value = 'standard';
+  if ($('bill-etransfer-row')) $('bill-etransfer-row').style.display = 'none';
+  if ($('bill-etransfer-contact')) $('bill-etransfer-contact').value = '';
+  if ($('bill-etransfer-name')) $('bill-etransfer-name').value = '';
   // Reset modal title in case it was changed by "Add as Recurring Bill"
   const modal = $('bill-modal');
   const title = modal ? modal.querySelector('.modal-title') : null;
@@ -3998,8 +4082,8 @@ function renderBillsList() {
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="bill-dot-large" style="background:${b.color||'#f2a83a'};"></div>
         <div>
-          <div class="bill-name">${b.name}</div>
-          <div class="bill-meta">${b.category} · ${b.frequency === 'biweekly' ? 'every 2 weeks (anchor ' + nthStr + ')' : nthStr + ' of each month'}</div>
+          <div class="bill-name">${b.name}${b.etransferContact ? ` <span style="font-family:var(--mono);font-size:9px;background:rgba(74,242,176,0.12);color:var(--accent2);border:1px solid rgba(74,242,176,0.25);border-radius:10px;padding:1px 7px;">⇄ ${b.etransferContact}</span>` : ''}</div>
+          <div class="bill-meta">${b.category} · ${b.frequency === 'biweekly' ? 'every 2 weeks (anchor ' + nthStr + ')' : nthStr + ' of each month'}${b.paymentMethod === 'etransfer' ? ' · e-transfer' : ''}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:14px;" onclick="event.stopPropagation();">
@@ -4023,20 +4107,21 @@ function showBillDetails(billId) {
   const tol = Math.max(0.02, billAmt * 0.15);  // 15% tolerance, min 2 cents
 
   const matches = state.transactions.filter(t => {
+    const amtDiff = Math.abs(Math.abs(t.amount) - billAmt);
+    if (amtDiff > tol) return false;
+
+    // E-transfer bills: match by contact name (outgoing only)
+    if (b.paymentMethod === 'etransfer' && b.etransferContact) {
+      return t.contact && t.contact.name &&
+             t.contact.name.toLowerCase() === b.etransferContact.toLowerCase() &&
+             t.contact.dir === 'out';
+    }
+
+    // Standard bills: match by normDesc similarity
     const tKey = normDesc(t.desc);
     if (!billKey || !tKey) return false;
-
-    // Key similarity: full tokens must overlap substantially
-    // — for "netflix" vs "netflix comvancover": "netflix comvancover".includes("netflix") = true ✓
-    // — for "netflix" vs "netflix foo": also ✓
-    // — but for "netflix" (bill) vs some OTHER "netflix.com..." transaction:
-    //   we further require amount match so the correct bill gets each tx
     const keyMatch = tKey.includes(billKey) || billKey.includes(tKey);
-    if (!keyMatch) return false;
-
-    // Amount match (skip transfers/unknown types)
-    const amtDiff = Math.abs(Math.abs(t.amount) - billAmt);
-    return amtDiff <= tol;
+    return keyMatch;
   }).sort((a, x) => x.date.localeCompare(a.date));
 
   const totalPaid = matches.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -4071,6 +4156,8 @@ function showBillDetails(billId) {
       ${detailTile('Type', `<span style="font-family:var(--mono);font-size:12px;color:${col};">${b.type}</span>`)}
       ${detailTile('Frequency', `<span style="font-family:var(--mono);font-size:12px;">${b.frequency || 'monthly'}</span>`)}
       ${detailTile('Due Day', `<span class="highlight-val" style="font-size:12px;">${nthStr}</span>`)}
+      ${b.paymentMethod === 'etransfer' ? detailTile('Payment', `<span style="font-family:var(--mono);font-size:11px;color:var(--accent2);">⇄ E-Transfer</span>`) : ''}
+      ${b.etransferContact ? detailTile('Recipient', `<span style="font-size:12px;color:var(--accent2);">↗ ${b.etransferContact}</span>`) : ''}
     </div>
 
     ${matches.length > 0 ? `
@@ -4130,17 +4217,20 @@ const RECURRING_PATTERNS = [
 ];
 
 function normDesc(desc) {
-  // Extract merchant core — strip noise that varies per-transaction
+  // Normalize a transaction description to a stable dedup/match key:
+  // strips OFX \xe2\x80\x94 NAME—MEMO joins, URLs, store numbers, ref codes, province codes
   return (desc || '')
-    .replace(/\s+www\.[a-z0-9.-]+/gi, '')      // trailing URLs: " www.amazon.c"
-    .replace(/\s+https?:\/\/\S+/gi, '')        // full URLs
-    .replace(/\s*#\d+/g, '')                    // store numbers
-    .replace(/\*[A-Z0-9]{4,}/gi, '')             // card ref codes: AMZN*AB1CD234
-    .replace(/\b[A-Z0-9]{7,}\b/g, '')           // long alphanumeric ref codes: BBOGN5VY1
-    .replace(/\d{4,}/g, '')                      // standalone long numbers
-    .replace(/\$[\d,.]+/g, '')                  // dollar amounts
-    .replace(/\b(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|CA|US)\b/gi, '') // province codes
-    .replace(/[-_*#\/\\.]/g, ' ')              // punctuation incl dots
+    .replace(/\s+www\.[a-z0-9.-]+/gi, '')        // trailing URLs: " www.amazon.c"
+    .replace(/\s+https?:\/\/\S+/gi, '')          // full URLs
+    .replace(/\s*\u2014.*$/g, '')                    // OFX NAME—MEMO: strip from em-dash onward
+    .replace(/\s*-{2,}.*$/g, '')                   // double-hyphen separators
+    .replace(/\s*#\d+/g, '')                       // store numbers: Tim Hortons #1234
+    .replace(/\*[A-Z0-9]{4,}/gi, '')              // card ref codes: AMZN*AB1CD234
+    .replace(/\b\d{5,}\b/g, '')                   // long pure-digit strings (5+ digits)
+    .replace(/\b[A-Z0-9]{8,}\b/g, '')             // long alphanumeric ref codes (8+ chars)
+    .replace(/\$[\d,.]+/g, '')                   // dollar amounts
+    .replace(/\b(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL)\b/g, '') // Canadian province codes
+    .replace(/[-_*#\/\\.]/g, ' ')                // punctuation including dots
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
